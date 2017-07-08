@@ -1,0 +1,19 @@
+language: scala
+scala:
+- 2.11.11
+jdk:
+- oraclejdk8
+script:
+- sbt +test
+before_deploy:
+- pip install --user release-manager==0.3.0
+deploy:
+  skip_cleanup: true
+  provider: script
+  script: ./.travis/deploy.sh $TRAVIS_TAG
+  on:
+    tags: true
+env:
+  global:
+  - secure: dp/IJd0lzeIBPu4wupZMnYUNtr9JHUzQ7qsAduwXvKgSFoTdqcc5EZOXAqTE84pop/kjveD9bQZcEdAZsglSBFB5tYWjjomG2zkzteagcr/o6vUVUQN/OoYYtkMV4Tj9wEsJ+W4WtrVeHMCN350Q5Qn4Fl2GtWSrv92P8PoyOXinnJCIyPlBTj7WWFMfelfXkMcQ9Amlj7mJBdkUfYcQ8CQ91dnDgzWo9vGp6eMQOwgXVHgdJi8X0IzHlPkTh7aVq48v+8nkPbCpgajrJm5LeprmjS+fcQfJVWsCgoGdXWKL4va3grnbH/6+hF1UzICdQFT5lZdbSr07WquSgO+xQtdKY2s/FunqvSc0oKXYLg7OzagFFZlrapIfPF8wEXWpRwYaKeq2UumvHkR7rwaqsBQTCsHOru5NJGUDN/dhIIkVh6kBb8V15/x6wfieQFBwhVkczT7Xzpq/YsOayaSc9MfB3S2Q1MKNu+jnd3Eh3w+NWstFcTDpc0BZ68O48NpfbGsK++wUuLN6E7odajIQhyBY5TbpRscym7FmJ+9w5pteXmIrLXq/ROu5jRNlC2IIquj4hqZXlJyRfBKtJLbkjz7EPfCHkws+R53nU8VMER4uoSXCLlC7lwuzV14ffdmWTeUHNIBHG+MG3mnWbQkC4cqCTMvak2bSf+0TRaRLj4w=
+  - secure: mflxWHON4ztVtiZ5v4hf69+zv9hRMiS5Azs5XnT7zEQdDRq5Lwhn9JzlhmZ90gmq9PlVEVocyT7pA7SNgWmU07260rVH3Oaij0C7iVhsXV3A+A0ldkihTtVgPFIHpK2nqSZegie5uEa0qtErPcsM2a+KcO/mSDyCst49F1epUldhx2AzCstrFb3yE5nfQNJvJGGVK3mXAK4jqErUk7JKNCPornJNLkkhkr9/pVB4ajZ/rW2i9Pd01JsvjnszjjUonSojJHUmanJz/rN1iFUSthRF9Cl952SYCysqVEV3owiIho8emrZxDqRr2YluwdbZgcRhHR6PCdNGFro/pQ/+11pqE9iPzkTY44A4WofN5NsbAsZ3gGXj5NPjwkSGt2OVsXZA9XkIFIUu/DKUe+dwezlPD/LTHMvTymFPRQDla5z2KCR0dXBN0ShPm095ihPqZYzOiR956SqTnXdl1d9SJY6DQbto4aH0eExK3obij2t868I3XQtvIZdKoeMcdi/UwSenGMb94jtx9/ag8a+F7/x8oPxETh1DBcRNc1+fC4veQOja+WM1o3/fnvtO6uSeA4hPBPC8ZP65ZH+aVnw4mongnRG64m3AiGBUO9blndlJ1w40crisT1LiAJRcht0FickPS1wtI6iSxiC0RDUSk3VpXuDivZRkt1Euy35Wrms=
