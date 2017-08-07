@@ -5,12 +5,12 @@ local:
 # Required: deployment targets
 targets:
   - type     : "awss3"
-    user     : <%= ENV['AWS_ACCESS_KEY'] %>
-    password : <%= ENV['AWS_SECRET_KEY'] %>
+    access_key_id: <%= ENV['AWS_ACCESS_KEY'] %>
+    secret_access_key: <%= ENV['AWS_SECRET_KEY'] %>
 
 # Required: packages to be deployed
 packages:
-  - repo     : "snowflake-loader-asset"
+  - name     : "snowflake-loader-assets"
     bucket   : "snowplow-hosted-assets"
     path     : "4-storage/strawberry-loader"
     region   : "eu-west-1"
@@ -34,18 +34,18 @@ packages:
     # Required: Artifact
     artifacts:
         # The artifact name is composed like so: {{prefix}}{{version}}{{suffix}}.zip
-      - type:  : "asis"
+      - type   : "asis"
         prefix : "strawberry-transformer-"
         suffix : ""
 
         # The binaries to put in the zip
         binary_paths:
-          - transformer/target/scala-2.11/snowplow-snowflake-transformer-<%= ENV['TRAVIS_TAG'] %>
+          - transformer/target/scala-2.11/snowplow-snowflake-transformer-<%= ENV['TRAVIS_TAG'] %>.jar
 
-      - type:  : "asis"
+      - type   : "asis"
         prefix : "strawberry-loader-"
         suffix : ""
 
         # The binaries to put in the zip
         binary_paths:
-          - loader/target/scala-2.11/snowplow-snowflake-loader-<%= ENV['TRAVIS_TAG'] %>
+          - loader/target/scala-2.11/snowplow-snowflake-loader-<%= ENV['TRAVIS_TAG'] %>.jar
