@@ -18,4 +18,7 @@ object SnowflakeDatatype {
   case object Integer extends SnowflakeDatatype
   case class Number(precision: Int, scale: Int) extends SnowflakeDatatype
   case object Boolean extends SnowflakeDatatype
+  case object Variant extends SnowflakeDatatype
+  case object JsonObject extends SnowflakeDatatype
+  case object JsonArray extends SnowflakeDatatype
 }

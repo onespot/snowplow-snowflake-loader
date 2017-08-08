@@ -24,6 +24,8 @@ package object ddl {
       case Integer                  => "INTEGER"
       case Number(precision, scale) => s"NUMBER($precision, $scale)"
       case Boolean                  => "BOOLEAN"
+      case Variant                  => "VARIANT"
+      case JsonObject               => "OBJECT"
     }
   }
 
@@ -50,7 +52,8 @@ package object ddl {
         case columnName :: tail => columnName + " " * (longest + 1 - columnName.length) + tail.mkString(" ")
         case other => other.mkString(" ")
       }
-      s"CREATE TABLE IF NOT EXISTS $schema${ddl.name} (\n" +
+      val temporary = if (ddl.temporary) " TEMPORARY " else " "
+      s"CREATE${temporary}TABLE IF NOT EXISTS $schema${ddl.name} (\n" +
         cols.map("  " + _).mkString(",\n") + constraint + "\n);"
     }
   }

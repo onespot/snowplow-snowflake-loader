@@ -11,4 +11,5 @@ object Defaults {
   val FileFormat = "snowplow_enriched"
   val Schema = "atomic"
   val Table = "events"
+  val TempTableColumn = "enriched_data"
 }

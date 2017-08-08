@@ -13,7 +13,13 @@ case class CreateTable(
   schema: Option[String],
   name: String,
   columns: List[Column],
-  primaryKey: Option[PrimaryKeyConstraint])
+  primaryKey: Option[PrimaryKeyConstraint],
+  temporary: Boolean = false) {
+  def getFullTableName = schema match {
+    case Some(s) => s"$s.$name"
+    case None => name
+  }
+}
 
 object CreateTable {
   case class PrimaryKeyConstraint(name: String, column: String)
