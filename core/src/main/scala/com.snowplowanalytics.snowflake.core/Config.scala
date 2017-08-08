@@ -24,9 +24,9 @@ object Config {
 
   object S3Folder {
     def parse(s: String): Either[String, S3Folder] = s match {
-      case _ if !correctlyPrefixed(s) => Left("Bucket name must start with s3:// prefix")
-      case _ if s.length > 1024        => Left("Key length cannot be more than 1024 symbols")
-      case _                           => Right(appendTrailingSlash(fixPrefix(s)))
+      case _ if !correctlyPrefixed(s) => Left(s"Bucket name [$s] must start with s3:// prefix")
+      case _ if s.length > 1024       => Left("Key length cannot be more than 1024 symbols")
+      case _                          => Right(appendTrailingSlash(fixPrefix(s)))
     }
   }
 

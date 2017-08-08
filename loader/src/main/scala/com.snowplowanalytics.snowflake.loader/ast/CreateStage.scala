@@ -5,12 +5,6 @@
  *
  * Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
  */
-package com.snowplowanalytics.snowflake.transformer
+package com.snowplowanalytics.snowflake.loader.ast
 
-import org.specs2.Specification
-
-class TransformerSpec extends Specification { def is = s2"""
-  Strip JSON fields
-"""
-
-}
+case class CreateStage(name: String, url: String, fileFormat: String, schema: String)

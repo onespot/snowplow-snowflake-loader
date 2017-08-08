@@ -5,9 +5,9 @@
  *
  * Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
  */
-package com.snowplowanalytics.snowflake.loader.ddl
+package com.snowplowanalytics.snowflake.loader.ast
 
-import CreateWarehouse._
+import com.snowplowanalytics.snowflake.loader.ast.CreateWarehouse._
 
 case class CreateWarehouse(name: String, size: Option[Size])
 

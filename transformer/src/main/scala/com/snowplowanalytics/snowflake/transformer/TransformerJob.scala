@@ -26,7 +26,7 @@ object TransformerJob {
     jobConfigs.foreach { jobConfig =>
       ProcessManifest.add(dynamoDB, tableName, jobConfig.runId)
       val shredTypes = process(sc, jobConfig)
-      ProcessManifest.markProcessed(dynamoDB, tableName, jobConfig.runId, shredTypes)
+      ProcessManifest.markProcessed(dynamoDB, tableName, jobConfig.runId, shredTypes, jobConfig.output)
     }
   }
 

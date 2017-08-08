@@ -5,10 +5,10 @@
  *
  * Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
  */
-package com.snowplowanalytics.snowflake.loader.ddl
+package com.snowplowanalytics.snowflake.loader.ast
 
-import SnowflakeDatatype._
-import CreateTable._
+import com.snowplowanalytics.snowflake.loader.ast.CreateTable._
+import com.snowplowanalytics.snowflake.loader.ast.SnowflakeDatatype._
 
 object AtomicDef {
   /**
@@ -20,9 +20,9 @@ object AtomicDef {
     Column("platform", Varchar(255)),
 
     // Data/time
-    Column("etl_tstamp", Timesamp),
-    Column("collector_tstamp", Timesamp, notNull = true),
-    Column("dvce_created_tstamp", Timesamp),
+    Column("etl_tstamp", Timestamp),
+    Column("collector_tstamp", Timestamp, notNull = true),
+    Column("dvce_created_tstamp", Timestamp),
 
     // Event
     Column("event", Varchar(128)),
@@ -181,17 +181,17 @@ object AtomicDef {
     Column("etl_tags", Varchar(500)),
 
     // Time event was sent
-    Column("dvce_sent_tstamp", Timesamp),
+    Column("dvce_sent_tstamp", Timestamp),
 
     // Referer
     Column("refr_domain_userid", Varchar(36)),
-    Column("refr_dvce_tstamp", Timesamp),
+    Column("refr_dvce_tstamp", Timestamp),
 
     // Session ID
     Column("domain_sessionid", Char(36)),
 
     // Derived timestamp
-    Column("derived_tstamp", Timesamp),
+    Column("derived_tstamp", Timestamp),
 
     // Event schema
     Column("event_vendor", Varchar(1000)),
@@ -203,9 +203,10 @@ object AtomicDef {
     Column("event_fingerprint", Varchar(128)),
 
     // True timestamp
-    Column("true_tstamp", Timesamp)
+    Column("true_tstamp", Timestamp)
   )
 
-  def getTable(schema: String): CreateTable =
-    CreateTable(Some(schema), Defaults.Table, columns, Some(PrimaryKeyConstraint("event_id_pk", "event_id")))
+  /** Get statement to create standard table with custom schema */
+  def getTable(schema: String = Defaults.Schema): CreateTable =
+    CreateTable(schema, Defaults.Table, columns, Some(PrimaryKeyConstraint("event_id_pk", "event_id")))
 }

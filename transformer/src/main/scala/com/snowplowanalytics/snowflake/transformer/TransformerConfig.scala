@@ -7,11 +7,13 @@
  */
 package com.snowplowanalytics.snowflake.transformer
 
-import cats.implicits._
-import cats.data.Validated
-
 import com.snowplowanalytics.snowflake.core.Temporary
 import com.snowplowanalytics.snowflake.core.Config.S3Folder
+
+import cats.implicits._
+
+import cats.data.Validated
+
 import com.snowplowanalytics.snowflake.generated.ProjectMetadata
 
 /** End Spark driver config parsed from CLI */
@@ -20,6 +22,7 @@ case class TransformerConfig(
   enrichedOutput: S3Folder,
   awsAccessKey: String,
   awsSecretKey: String,
+  awsRegion: String,
   manifestTable: String)
 
 object TransformerConfig {
@@ -34,12 +37,13 @@ object TransformerConfig {
     enrichedOutput: String,
     awsAccessKey: String,
     awsSecretKey: String,
+    awsRegion: String,
     manifestTable: String)
 
   /**
    * Starting raw value, required by `parser`
    */
-  private val rawCliConfig = RawConfig("", "", "", "", "")
+  private val rawCliConfig = RawConfig("", "", "", "", "", "")
 
   private val parser = new scopt.OptionParser[RawConfig](Temporary.TransformerName) {
     head(Temporary.TransformerName, ProjectMetadata.version)
@@ -68,6 +72,12 @@ object TransformerConfig {
       .action((x, c) => c.copy(awsSecretKey = x))
       .text("AWS Secret Access Key")
 
+    opt[String]("aws-region")
+      .required()
+      .valueName("region")
+      .action((x, c) => c.copy(awsRegion = x))
+      .text("AWS Region")
+
     opt[String]("manifest-table")
       .required()
       .valueName("table-name")
@@ -81,8 +91,8 @@ object TransformerConfig {
    * Check that raw config contains valid state
    */
   def transform(raw: RawConfig): Either[String, TransformerConfig] = {
-    (S3Folder.parse(raw.enrichedInput).toValidatedNel |@| S3Folder.parse(raw.enrichedOutput).toValidatedNel).map {
-      (input: String, output: String) => TransformerConfig(input, output, raw.awsAccessKey, raw.awsSecretKey, raw.manifestTable)
+    (S3Folder.parse(raw.enrichedInput).toValidatedNel |@| S3Folder.parse(raw.enrichedOutput).toValidatedNel).map { (input: String, output: String) =>
+      TransformerConfig(input, output, raw.awsAccessKey, raw.awsSecretKey, raw.awsRegion, raw.manifestTable)
     } match {
       case Validated.Valid(c) => Right(c)
       case Validated.Invalid(errors) => Left(errors.toList.mkString(", "))

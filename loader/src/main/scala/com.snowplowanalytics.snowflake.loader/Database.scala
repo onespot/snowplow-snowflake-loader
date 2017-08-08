@@ -7,6 +7,8 @@
  */
 package com.snowplowanalytics.snowflake.loader
 
+import ast._
+
 import java.sql.{Connection, DriverManager, SQLException}
 import java.util.Properties
 
@@ -22,9 +24,26 @@ object Database {
     properties.put("account", config.snowflakeAccount)
     properties.put("warehouse", config.snowflakeWarehouse)
     properties.put("db", config.snowflakeDb)
-    properties.put("schema", "atomic")
+    properties.put("schema", config.snowflakeSchema)
 
     val connectStr = s"jdbc:snowflake://${config.snowflakeAccount}.snowflakecomputing.com"
     DriverManager.getConnection(connectStr, properties)
+  }
+
+  /** Execute SQL statement */
+  def execute[S: Statement](connection: Connection, ast: S): Unit = {
+    val jdbcStatement = connection.createStatement()
+    jdbcStatement.execute(ast.getStatement.value)
+    jdbcStatement.close()
+  }
+
+  /** Execute SQL statement and print status */
+  def executeAndOutput[S: Statement](connection: Connection, ast: S): Unit = {
+    val statement = connection.createStatement()
+    val rs = statement.executeQuery(ast.getStatement.value)
+    while (rs.next()) {
+      println(rs.getString("status"))
+    }
+    statement.close()
   }
 }

@@ -8,6 +8,7 @@
 package com.snowplowanalytics.snowflake.core
 
 import cats.implicits._
+import java.util.{Map => JMap}
 
 import scala.collection.convert.decorateAsJava._
 import scala.collection.convert.decorateAsScala._
@@ -21,17 +22,22 @@ import org.joda.time.{DateTime, DateTimeZone}
 
 import com.snowplowanalytics.snowplow.analytics.scalasdk.RunManifests
 
+import scala.annotation.tailrec
+import scala.util.control.NonFatal
+
 /**
  * Helper module for working with process manifest
  */
 object ProcessManifest {
 
+  type DbItem = JMap[String, AttributeValue]
+
   /** List S3 folders not added to manifest */
-  def getUnprocessed(awsAccessKey: String, awsSecretKey: String, manifestTable: String, enrichedInput: String) = {
+  def getUnprocessed(awsAccessKey: String, awsSecretKey: String, awsRegion: String, manifestTable: String, enrichedInput: String) = {
     val credentials = new BasicAWSCredentials(awsAccessKey, awsSecretKey)
     val provider = new AWSStaticCredentialsProvider(credentials)
 
-    val s3Client = AmazonS3ClientBuilder.standard().withRegion("us-east-1").withCredentials(provider).build()
+    val s3Client = AmazonS3ClientBuilder.standard().withRegion(awsRegion).withCredentials(provider).build()
     val dynamodbClient = getDynamoDb(awsAccessKey, awsSecretKey)
 
     val runManifest = RunManifests(dynamodbClient, manifestTable)
@@ -63,7 +69,7 @@ object ProcessManifest {
   }
 
   /** Mark runId as processed by adding `ProcessedAt` and `ShredTypes` attributes */
-  def markProcessed(dynamoDb: AmazonDynamoDB, tableName: String, runId: String, shredTypes: List[String]) = {
+  def markProcessed(dynamoDb: AmazonDynamoDB, tableName: String, runId: String, shredTypes: List[String], outputPath: String) = {
     val now = (DateTime.now(DateTimeZone.UTC).getMillis / 1000).toInt
     val shredTypesDynamo = shredTypes.map(t => new AttributeValue(t)).asJava
 
@@ -74,7 +80,8 @@ object ProcessManifest {
       ).asJava)
       .withAttributeUpdates(Map(
         "ProcessedAt" -> new AttributeValueUpdate().withValue(new AttributeValue().withN(now.toString)),
-        "ShredTypes" ->  new AttributeValueUpdate().withValue(new AttributeValue().withL(shredTypesDynamo))
+        "ShredTypes" -> new AttributeValueUpdate().withValue(new AttributeValue().withL(shredTypesDynamo)),
+        "SavedTo" -> new AttributeValueUpdate().withValue(new AttributeValue(outputPath))
       ).asJava)
 
     dynamoDb.updateItem(request)
@@ -98,11 +105,31 @@ object ProcessManifest {
 
   /** Get all folders with their state */
   def scan(dynamoDB: AmazonDynamoDB, tableName: String): Either[String, List[RunId]] = {
-    val request = new ScanRequest()
-      .withTableName(tableName)   // TODO: add pagination
 
-    val result = dynamoDB.scan(request)
-    val rawItems = result.getItems.asScala.map(_.asScala)
-    rawItems.map(RunId.parse).toList.sequence
+    def getRequest = new ScanRequest().withTableName(tableName)
+
+    @tailrec def go(last: ScanResult, acc: List[DbItem]): List[DbItem] = {
+      Option(last.getLastEvaluatedKey) match {
+        case Some(key) =>
+          val req = getRequest.withExclusiveStartKey(key)
+          val response = dynamoDB.scan(req)
+          val items = response.getItems
+          go(response, items.asScala.toList ++ acc)
+        case None => acc
+      }
+    }
+
+    val scanResult = try {
+      val firstResponse = dynamoDB.scan(getRequest)
+      val initAcc = firstResponse.getItems.asScala.toList
+      Right(go(firstResponse, initAcc).map(_.asScala))
+    } catch {
+      case NonFatal(e) => Left(e.toString)
+    }
+
+    for {
+      items <- scanResult
+      result <- items.map(RunId.parse).sequence
+    } yield result
   }
 }

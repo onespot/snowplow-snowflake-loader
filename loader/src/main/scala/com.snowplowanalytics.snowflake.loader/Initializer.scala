@@ -7,11 +7,7 @@
  */
 package com.snowplowanalytics.snowflake.loader
 
-import cats.implicits._
-
-import java.sql.Connection
-
-import ddl._
+import com.snowplowanalytics.snowflake.loader.ast._
 
 /** Module containing functions to setup Snowflake table for Enriched events */
 object Initializer {
@@ -19,59 +15,14 @@ object Initializer {
   /** Run setup process */
   def run(config: LoaderConfig.SetupConfig): Unit = {
     val connection = Database.getConnection(config)
-    createSchema(connection, config.snowflakeSchema)
-    createTable(connection, config.snowflakeSchema)
-    createWarehouse(connection, config.snowflakeWarehouse)
-    createFileType(connection)
-    createStage(connection, config.snowflakeStage, config.stageUrl, config.snowflakeSchema)
-  }
 
-  def createSchema(connection: Connection, schemaName: String): Unit = {
-    val statement = connection.createStatement()
-    val rs = statement.executeQuery(CreateSchema(schemaName).show)
-    while (rs.next()) {
-      println(rs.getString("status"))
-    }
-    statement.close()
-  }
+    Database.executeAndOutput(connection, CreateSchema(config.snowflakeSchema))
+    Database.executeAndOutput(connection, AtomicDef.getTable(config.snowflakeSchema))
+    Database.executeAndOutput(connection, CreateWarehouse(config.snowflakeWarehouse, size = Some(CreateWarehouse.XSmall)))
+    Database.executeAndOutput(connection, CreateFileFormat.CreateCsvFormat(Defaults.FileFormat, Some("\n"), None))
+    Database.executeAndOutput(connection, CreateStage(
+      config.snowflakeStage, config.stageUrl, Defaults.FileFormat, config.snowflakeSchema))
 
-  def createTable(connection: Connection, schemaName: String): Unit = {
-    val statement = connection.createStatement()
-    val rs = statement.executeQuery(AtomicDef.getTable(schemaName).show)
-    while (rs.next()) {
-      println(rs.getString("status"))
-    }
-    statement.close()
-  }
-
-  def createFileType(connection: Connection): Unit = {
-    val ddl: CreateFileFormat =
-      CreateFileFormat.CreateCsvFormat(Defaults.FileFormat, Some("\n"), None)
-    val statement = connection.createStatement()
-    val rs = statement.executeQuery(ddl.show)
-    while (rs.next()) {
-      println(rs.getString("status"))
-    }
-    statement.close()
-  }
-
-  def createWarehouse(connection: Connection, warehouseName: String): Unit = {
-    val ddl = CreateWarehouse(warehouseName, size = Some(CreateWarehouse.XSmall))
-    val statement = connection.createStatement()
-    val rs = statement.executeQuery(ddl.show)
-    while (rs.next()) {
-      println(rs.getString("status"))
-    }
-    statement.close()
-  }
-
-  def createStage(connection: Connection, stageName: String, stagePath: String, schemaName: String): Unit = {
-    val ddl = CreateStage(stageName, stagePath, Defaults.FileFormat, Some(schemaName))
-    val statement = connection.createStatement()
-    val rs = statement.executeQuery(ddl.show)
-    while (rs.next()) {
-      println(rs.getString("status"))
-    }
-    statement.close()
+    connection.close()
   }
 }

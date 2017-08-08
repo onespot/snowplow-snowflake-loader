@@ -7,10 +7,10 @@
  */
 package com.snowplowanalytics.snowflake.loader
 
-import com.snowplowanalytics.snowflake.generated.ProjectMetadata
 import com.snowplowanalytics.snowflake.core.Temporary
 import com.snowplowanalytics.snowflake.core.Config.S3Folder
-import com.snowplowanalytics.snowflake.loader.ddl.Defaults
+import com.snowplowanalytics.snowflake.generated.ProjectMetadata
+import com.snowplowanalytics.snowflake.loader.ast.Defaults
 
 /** Common loader configuration interface */
 sealed trait LoaderConfig {
@@ -24,6 +24,7 @@ sealed trait LoaderConfig {
   def snowflakeAccount: String
   def snowflakeWarehouse: String
   def snowflakeDb: String
+  def snowflakeSchema: String
 }
 
 object LoaderConfig {

@@ -5,10 +5,10 @@
  *
  * Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
  */
-package com.snowplowanalytics.snowflake
-package transformer
+package com.snowplowanalytics.snowflake.transformer
 
-import core.ProcessManifest
+import com.snowplowanalytics.snowflake.core.ProcessManifest
+
 
 object Main {
   def main(args: Array[String]): Unit = {
@@ -17,6 +17,7 @@ object Main {
         val runFolders = ProcessManifest.getUnprocessed(
           appConfig.awsAccessKey,
           appConfig.awsSecretKey,
+          appConfig.awsRegion,
           appConfig.manifestTable,
           appConfig.enrichedInput)
 

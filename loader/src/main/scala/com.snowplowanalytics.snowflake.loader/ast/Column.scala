@@ -5,6 +5,10 @@
  *
  * Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
  */
-package com.snowplowanalytics.snowflake.loader.ddl
+package com.snowplowanalytics.snowflake.loader.ast
 
-case class CreateStage(name: String, url: String, fileFormat: String, schema: Option[String])
+case class Column(
+  name: String,
+  dataType: SnowflakeDatatype,
+  notNull: Boolean = false,
+  unique: Boolean = false)
