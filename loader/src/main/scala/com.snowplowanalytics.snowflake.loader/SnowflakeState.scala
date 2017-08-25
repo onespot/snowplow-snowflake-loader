@@ -58,7 +58,7 @@ object SnowflakeState {
 
   /** Extract state from full Snowflake manifest state */
   def getState(runIds: List[RunId]): SnowflakeState = {
-    val sortedRunIds = runIds.sortBy(_.startedAt)
+    val sortedRunIds = runIds.sortBy(_.addedAt)
     val processed = sortedRunIds.collect { case x: ProcessedRunId => x }  // next
     val loaded = sortedRunIds.collect { case x: LoadedRunId => x }        // done
     SnowflakeState(processed, loaded)

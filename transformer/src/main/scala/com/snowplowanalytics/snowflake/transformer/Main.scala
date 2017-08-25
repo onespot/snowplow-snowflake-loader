@@ -14,6 +14,8 @@ object Main {
   def main(args: Array[String]): Unit = {
     TransformerConfig.parse(args) match {
       case Some(Right(appConfig)) =>
+
+        // Get run folders that are not in RunManifest in any form
         val runFolders = ProcessManifest.getUnprocessed(
           appConfig.awsAccessKey,
           appConfig.awsSecretKey,

@@ -22,10 +22,9 @@ object BuildSettings {
 
   lazy val buildSettings = Seq[Setting[_]](
     name := "snowplow-snowflake-loader",
-    version := "0.1.0-rc4",
+    version := "0.1.0-rc5",
     organization := "com.snowplowanalytics",
     scalaVersion := "2.11.11",
-    shellPrompt := { _ => moduleName.value + "> " },
     resolvers ++= Seq(
       "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"
     ),

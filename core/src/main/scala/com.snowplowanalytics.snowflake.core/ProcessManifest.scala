@@ -8,10 +8,13 @@
 package com.snowplowanalytics.snowflake.core
 
 import cats.implicits._
+
 import java.util.{Map => JMap}
 
+import scala.annotation.tailrec
 import scala.collection.convert.decorateAsJava._
 import scala.collection.convert.decorateAsScala._
+import scala.util.control.NonFatal
 
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDB, AmazonDynamoDBClientBuilder}
@@ -22,8 +25,7 @@ import org.joda.time.{DateTime, DateTimeZone}
 
 import com.snowplowanalytics.snowplow.analytics.scalasdk.RunManifests
 
-import scala.annotation.tailrec
-import scala.util.control.NonFatal
+import com.snowplowanalytics.snowflake.generated.ProjectMetadata
 
 /**
  * Helper module for working with process manifest
@@ -32,7 +34,7 @@ object ProcessManifest {
 
   type DbItem = JMap[String, AttributeValue]
 
-  /** List S3 folders not added to manifest */
+  /** List S3 folders not added to manifest (in any way, including loaded, skipped, fresh etc) */
   def getUnprocessed(awsAccessKey: String, awsSecretKey: String, awsRegion: String, manifestTable: String, enrichedInput: String) = {
     val credentials = new BasicAWSCredentials(awsAccessKey, awsSecretKey)
     val provider = new AWSStaticCredentialsProvider(credentials)
@@ -62,7 +64,9 @@ object ProcessManifest {
       .withTableName(tableName)
       .withItem(Map(
         RunManifests.DynamoDbRunIdAttribute -> new AttributeValue(runId),
-        "StartedAt" -> new AttributeValue().withN(now.toString)
+        "StartedAt" -> new AttributeValue().withN(now.toString),
+        "AddedBy" -> new AttributeValue(ProjectMetadata.version),
+        "ToSkip" -> new AttributeValue().withBOOL(false)
       ).asJava)
 
     dynamoDb.putItem(request)
@@ -97,7 +101,8 @@ object ProcessManifest {
         RunManifests.DynamoDbRunIdAttribute -> new AttributeValue(runId)
       ).asJava)
       .withAttributeUpdates(Map(
-        "LoadedAt" -> new AttributeValueUpdate().withValue(new AttributeValue().withN(now.toString))
+        "LoadedAt" -> new AttributeValueUpdate().withValue(new AttributeValue().withN(now.toString)),
+        "LoadedBy" -> new AttributeValueUpdate().withValue(new AttributeValue(ProjectMetadata.version))
       ).asJava)
 
     dynamoDb.updateItem(request)

@@ -16,7 +16,7 @@ object Dependencies {
     val snowflakeJdbc    = "3.1.1"
     // Scala
     val spark            = "2.1.0"
-    val scopt            = "3.5.0"
+    val scopt            = "3.7.0"
     val analyticsSdk     = "0.2.0"
     val scalaz7          = "7.0.9"
     val json4sJackson    = "3.2.11"

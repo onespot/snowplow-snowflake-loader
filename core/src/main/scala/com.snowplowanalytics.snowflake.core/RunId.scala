@@ -26,7 +26,11 @@ sealed trait RunId extends Product with Serializable {
   /** S3 path to folder in **enriched archive** (without bucket name) */
   def runId: String
   /** Time when run id started to processing by Transformer job */
-  def startedAt: DateTime
+  def addedAt: DateTime
+  /** Version of Snowflake transformer added an item. Meta-data */
+  def addedBy: String
+  /** Marker if run id should be skipped */
+  def toSkip: Boolean
 }
 
 object RunId {
@@ -34,12 +38,38 @@ object RunId {
   /** Raw DynamoDB record */
   type RawItem = collection.Map[String, AttributeValue]
 
-  /** Folder that just started to processing */
-  case class FreshRunId(runId: String, startedAt: DateTime) extends RunId
+  /** Folder that just started to processing or marked to be skipped */
+  case class FreshRunId(
+      runId: String,
+      addedAt: DateTime,
+      addedBy: String,
+      toSkip: Boolean)
+    extends RunId
+
   /** Folder that has been processed, but not yet loaded */
-  case class ProcessedRunId(runId: String, startedAt: DateTime, processedAt: DateTime, shredTypes: List[String], savedTo: S3Folder) extends RunId
+  case class ProcessedRunId(
+      runId: String,
+      addedAt: DateTime,
+      processedAt: DateTime,
+      shredTypes: List[String],
+      savedTo: S3Folder,
+      addedBy: String,
+      toSkip: Boolean)
+    extends RunId
+
   /** Folder that has been processed and loaded */
-  case class LoadedRunId(runId: String, startedAt: DateTime, processedAt: DateTime, shredTypes: List[String], savedTo: S3Folder, loadedAt: DateTime) extends RunId
+  case class LoadedRunId(
+      runId: String,
+      addedAt: DateTime,
+      processedAt: DateTime,
+      shredTypes: List[String],
+      savedTo: S3Folder,
+      loadedAt: DateTime,
+      addedBy: String,
+      loadedBy: String)
+    extends RunId {
+    def toSkip = false
+  }
 
   /**
     * Extract `RunId` from data returned from DynamoDB
@@ -53,16 +83,19 @@ object RunId {
     val savedTo = getSavedTo(rawItem)
     val shredTypes = getShredTypes(rawItem)
     val loadedAt = getLoadedAt(rawItem)
+    val addedBy = getAddedBy(rawItem)
+    val loadedBy = getLoadedBy(rawItem)
+    val toSkip = getToSkip(rawItem)
 
-    val result = (runId |@| startedAt |@| processedAt |@| shredTypes |@| savedTo |@| loadedAt).map {
-      case (run, started, None, None, None, None) =>
-        FreshRunId(run, started).asRight
-      case (run, started, Some(processed), Some(shredded), Some(saved), None) =>
-        ProcessedRunId(run, started, processed, shredded, saved).asRight
-      case (run, started, Some(processed), Some(shredded), Some(saved), Some(loaded)) =>
-        LoadedRunId(run, started, processed, shredded, saved, loaded).asRight
-      case (run, started, processed, shredded, saved, loaded) =>
-        s"Invalid state: RunId -> $run, StartedAt -> $started, ProcessedAt -> $processed, ShredTypes -> $shredded, SavedTo -> $saved, LoadedAt -> $loaded".asLeft
+    val result = (runId |@| startedAt |@| processedAt |@| shredTypes |@| savedTo |@| loadedAt |@| addedBy |@| loadedBy |@| toSkip).map {
+      case (run, started, None, None, None, None, added, None, skip) =>
+        FreshRunId(run, started, added, skip).asRight
+      case (run, started, Some(processed), Some(shredded), Some(saved), None, added, None, skip) =>
+        ProcessedRunId(run, started, processed, shredded, saved, added, skip).asRight
+      case (run, started, Some(processed), Some(shredded), Some(saved), Some(loaded), added, Some(loader), ) =>
+        LoadedRunId(run, started, processed, shredded, saved, loaded, added, loader).asRight
+      case (run, started, processed, shredded, saved, loaded, added, loader, skip) =>
+        s"Invalid state: ${getStateMessage(run, started, processed, shredded, saved, loaded, added, loader, skip)}".asLeft
     }
 
     result match {
@@ -76,20 +109,20 @@ object RunId {
   private def getRunId(rawItem: RawItem): ValidatedNel[String, String] = {
     val runId = rawItem.get("RunId") match {
       case Some(value) if value.getS != null => Right(value.getS)
-      case Some(_) => Left(s"Required RunId attribute has non-string type")
-      case None => Left(s"Required RunId attribute is absent")
+      case Some(_) => Left("Required RunId attribute has non-string type")
+      case None => Left("Required RunId attribute is absent")
     }
     runId.toValidatedNel
   }
 
   private def getStartedAt(rawItem: RawItem) = {
-    val startedAt = rawItem.get("StartedAt") match {
+    val startedAt = rawItem.get("AddedAt") match {
       case Some(value) if value.getN != null =>
         Right(new DateTime(value.getN.toLong * 1000L).withZone(DateTimeZone.UTC))
       case Some(_) =>
-        Left(s"Required StartedAt attribute has non-number type")
+        Left(s"Required AddedAt attribute has non-number type")
       case None =>
-        Left(s"Required StartedAt attribute is absent")
+        Left(s"Required AddedAt attribute is absent")
     }
     startedAt.toValidatedNel
   }
@@ -106,7 +139,7 @@ object RunId {
     processedAt.toValidatedNel
   }
 
-  private def getShredTypes(rawItem: RawItem) = {
+  private def getShredTypes(rawItem: RawItem): ValidatedNel[String, Option[List[String]]] = {
     rawItem.get("ShredTypes") match {
       case Some(value) if value.getL == null =>
         s"Required ShredTypes attribute has non-list type in [$rawItem] record".invalidNel
@@ -146,4 +179,52 @@ object RunId {
     }
     savedTo.toValidatedNel
   }
+
+  private def getAddedBy(rawItem: RawItem) = {
+    val transformerVersion = rawItem.get("AddedBy") match {
+      case Some(value) if value.getS != null => value.getS.asRight
+      case Some(_) => "AddedBy attribute is present, but has non-string type".asLeft
+      case None => "Required AddedBy attribute is absent".asLeft
+    }
+    transformerVersion.toValidatedNel
+  }
+
+  private def getLoadedBy(rawItem: RawItem) = {
+    val loaderVersion = rawItem.get("LoadedBy") match {
+      case Some(value) if value.getS != null => value.getS.some.asRight
+      case Some(_) => "LoadedBy attribute is present, but has non-string type".asLeft
+      case None => none[String].asRight
+    }
+    loaderVersion.toValidatedNel
+  }
+
+  private def getToSkip(rawItem: RawItem) = {
+    val toSkip = rawItem.get("ToSkip") match {
+      case Some(value) if value.getBOOL != null => value.getBOOL.asRight
+      case Some(_) => "ToSkip attribute is present, but has non-bool type".asLeft
+      case None => "Required ToSkip attribute is absent".asLeft
+    }
+    toSkip.toValidatedNel
+  }
+
+  def getStateMessage(
+    runId: String,
+    addedAt: DateTime,
+    processedAt: Option[DateTime],
+    shredTypes: Option[List[String]],
+    savedTo: Option[S3Folder],
+    loadedAt: Option[DateTime],
+    addedBy: String,
+    loadedBy: Option[String],
+    toSkip: Boolean): String =
+    s"RunId -> $runId, " +
+      s"AddedAt -> $addedAt, " +
+      s"ProcessedAt -> $processedAt, " +
+      s"ShredTypes -> $shredTypes, " +
+      s"SavedTo -> $savedTo, " +
+      s"LoadedAt -> $loadedAt, " +
+      s"AddedBy -> $addedAt, " +
+      s"LoadedBy -> $loadedBy, " +
+      s"ToSkip -> $toSkip"
+
 }

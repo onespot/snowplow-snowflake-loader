@@ -26,9 +26,9 @@ class SnowflakeStateSpec extends Specification { def is = s2"""
   def e1 = {
     val initTime = 1502357136000L
     val input = List(
-      ProcessedRunId("enriched/archived/run-01", new DateTime(initTime + 1000), new DateTime(1502368136000L + 3000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_1"), "s3://transformer-output/run-01/"),
-      ProcessedRunId("enriched/archived/run-02", new DateTime(initTime + 2000), new DateTime(1502368136000L + 5000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_1"), "s3://transformer-output/run-02/"),
-      ProcessedRunId("enriched/archived/run-03", new DateTime(initTime + 3000), new DateTime(1502368136000L + 6000), List("context_com_acme_context_1"), "s3://transformer-output/run-03/")
+      ProcessedRunId("enriched/archived/run-01", new DateTime(initTime + 1000), new DateTime(1502368136000L + 3000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_1"), "s3://transformer-output/run-01/", "transformer-1", false),
+      ProcessedRunId("enriched/archived/run-02", new DateTime(initTime + 2000), new DateTime(1502368136000L + 5000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_1"), "s3://transformer-output/run-02/", "transformer-1", false),
+      ProcessedRunId("enriched/archived/run-03", new DateTime(initTime + 3000), new DateTime(1502368136000L + 6000), List("context_com_acme_context_1"), "s3://transformer-output/run-03/", "transformer-2", false)
     )
 
     val expected = SnowflakeState(input, Nil)
@@ -40,9 +40,9 @@ class SnowflakeStateSpec extends Specification { def is = s2"""
   def e2 = {
     val initTime = 1502357136000L
     val input = List(
-      LoadedRunId("enriched/archived/run-01", new DateTime(initTime + 1000), new DateTime(1502368136000L + 3000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_1"), "s3://transformer-output/run-01/", new DateTime(1502368136000L + 5000)),
-      LoadedRunId("enriched/archived/run-02", new DateTime(initTime + 2000), new DateTime(1502368136000L + 5000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_1"), "s3://transformer-output/run-02/", new DateTime(1502368136000L + 7000)),
-      LoadedRunId("enriched/archived/run-03", new DateTime(initTime + 3000), new DateTime(1502368136000L + 6000), List("context_com_acme_context_1"), "s3://transformer-output/run-03/", new DateTime(1502368136000L + 9000))
+      LoadedRunId("enriched/archived/run-01", new DateTime(initTime + 1000), new DateTime(1502368136000L + 3000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_1"), "s3://transformer-output/run-01/", new DateTime(1502368136000L + 5000), "transformer-2", "loader-1"),
+      LoadedRunId("enriched/archived/run-02", new DateTime(initTime + 2000), new DateTime(1502368136000L + 5000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_1"), "s3://transformer-output/run-02/", new DateTime(1502368136000L + 7000), "transformer-2", "loader-1"),
+      LoadedRunId("enriched/archived/run-03", new DateTime(initTime + 3000), new DateTime(1502368136000L + 6000), List("context_com_acme_context_1"), "s3://transformer-output/run-03/", new DateTime(1502368136000L + 9000), "transformer-3", "loader-1")
     )
 
     val expected = SnowflakeState(Nil, input)
@@ -54,19 +54,19 @@ class SnowflakeStateSpec extends Specification { def is = s2"""
   def e3 = {
     val initTime = 1502357136000L
     val processedInput = List(
-      ProcessedRunId("enriched/archived/run-01", new DateTime(initTime + 10000), new DateTime(1502368136000L + 30000), List("context_com_acme_context_1"), "s3://transformer-output/run-01/"),
-      ProcessedRunId("enriched/archived/run-02", new DateTime(initTime + 20000), new DateTime(1502368136000L + 50000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_1"), "s3://transformer-output/run-02/"),
-      ProcessedRunId("enriched/archived/run-03", new DateTime(initTime + 30000), new DateTime(1502368136000L + 60000), List("context_com_acme_context_1"), "s3://transformer-output/run-03/")
+      ProcessedRunId("enriched/archived/run-01", new DateTime(initTime + 10000), new DateTime(1502368136000L + 30000), List("context_com_acme_context_1"), "s3://transformer-output/run-01/", "transformer-1", false),
+      ProcessedRunId("enriched/archived/run-02", new DateTime(initTime + 20000), new DateTime(1502368136000L + 50000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_1"), "s3://transformer-output/run-02/", "transformer-1", false),
+      ProcessedRunId("enriched/archived/run-03", new DateTime(initTime + 30000), new DateTime(1502368136000L + 60000), List("context_com_acme_context_1"), "s3://transformer-output/run-03/", "transformer-1", false)
     )
     val loadedInput = List(
-      LoadedRunId("enriched/archived/run-04", new DateTime(initTime + 1000), new DateTime(1502368136000L + 3000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_1"), "s3://transformer-output/run-04/", new DateTime(1502368136000L + 5000)),
-      LoadedRunId("enriched/archived/run-05", new DateTime(initTime + 2000), new DateTime(1502368136000L + 5000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_1"), "s3://transformer-output/run-05/", new DateTime(1502368136000L + 7000)),
-      LoadedRunId("enriched/archived/run-06", new DateTime(initTime + 3000), new DateTime(1502368136000L + 6000), List("context_com_acme_context_1"), "s3://transformer-output/run-06/", new DateTime(1502368136000L + 9000))
+      LoadedRunId("enriched/archived/run-04", new DateTime(initTime + 1000), new DateTime(1502368136000L + 3000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_1"), "s3://transformer-output/run-04/", new DateTime(1502368136000L + 5000), "transformer-1", "loader-2"),
+      LoadedRunId("enriched/archived/run-05", new DateTime(initTime + 2000), new DateTime(1502368136000L + 5000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_1"), "s3://transformer-output/run-05/", new DateTime(1502368136000L + 7000), "transformer-1", "loader-2"),
+      LoadedRunId("enriched/archived/run-06", new DateTime(initTime + 3000), new DateTime(1502368136000L + 6000), List("context_com_acme_context_1"), "s3://transformer-output/run-06/", new DateTime(1502368136000L + 9000), "transformer-1", "loader-2")
     )
 
     val freshInput = List(
-      FreshRunId("enriched/archived/run-07", new DateTime(initTime + 100000)),
-      FreshRunId("enriched/archived/run-08", new DateTime(initTime + 200000))
+      FreshRunId("enriched/archived/run-07", new DateTime(initTime + 100000), "transformer-1", false),
+      FreshRunId("enriched/archived/run-08", new DateTime(initTime + 200000), "transformer-1", false)
     )
 
     val expected = SnowflakeState(processedInput, loadedInput)
@@ -78,31 +78,31 @@ class SnowflakeStateSpec extends Specification { def is = s2"""
   def e4 = {
     val initTime = 1502357136000L
     val loadedInput = List(
-      LoadedRunId("enriched/archived/run-01", new DateTime(initTime + 1000), new DateTime(1502368136000L + 3000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_2"), "s3://transformer-output/run-01/", new DateTime(1502368136000L + 5000)),
-      LoadedRunId("enriched/archived/run-02", new DateTime(initTime + 2000), new DateTime(1502368136000L + 5000), List("unstruct_event_com_acme_event_3", "context_com_acme_context_1"), "s3://transformer-output/run-02/", new DateTime(1502368136000L + 7000)),
-      LoadedRunId("enriched/archived/run-03", new DateTime(initTime + 3000), new DateTime(1502368136000L + 6000), List("context_com_acme_context_4"), "s3://transformer-output/run-03/", new DateTime(1502368136000L + 9000))
+      LoadedRunId("enriched/archived/run-01", new DateTime(initTime + 1000), new DateTime(1502368136000L + 3000), List("unstruct_event_com_acme_event_1", "context_com_acme_context_2"), "s3://transformer-output/run-01/", new DateTime(1502368136000L + 5000), "transformer-1", "loader-1"),
+      LoadedRunId("enriched/archived/run-02", new DateTime(initTime + 2000), new DateTime(1502368136000L + 5000), List("unstruct_event_com_acme_event_3", "context_com_acme_context_1"), "s3://transformer-output/run-02/", new DateTime(1502368136000L + 7000), "transformer-1", "loader-1"),
+      LoadedRunId("enriched/archived/run-03", new DateTime(initTime + 3000), new DateTime(1502368136000L + 6000), List("context_com_acme_context_4"), "s3://transformer-output/run-03/", new DateTime(1502368136000L + 9000), "transformer-1", "loader-1")
     )
     val processedInput = List(
-      ProcessedRunId("enriched/archived/run-04", new DateTime(initTime + 10000), new DateTime(1502368136000L + 30000), List("context_com_acme_context_6"), "s3://transformer-output/run-04/"),
-      ProcessedRunId("enriched/archived/run-05", new DateTime(initTime + 20000), new DateTime(1502368136000L + 50000), List("unstruct_event_com_acme_event_7", "context_com_acme_context_1"), "s3://transformer-output/run-05/"),
-      ProcessedRunId("enriched/archived/run-06", new DateTime(initTime + 30000), new DateTime(1502368136000L + 60000), List("context_com_acme_context_1"), "s3://transformer-output/run-06/"),
-      ProcessedRunId("enriched/archived/run-07", new DateTime(initTime + 30000), new DateTime(1502368136000L + 60000), List("context_com_acme_context_10", "context_com_acme_context_11"), "s3://transformer-output/run-07/")
+      ProcessedRunId("enriched/archived/run-04", new DateTime(initTime + 10000), new DateTime(1502368136000L + 30000), List("context_com_acme_context_6"), "s3://transformer-output/run-04/", "transformer-1", false),
+      ProcessedRunId("enriched/archived/run-05", new DateTime(initTime + 20000), new DateTime(1502368136000L + 50000), List("unstruct_event_com_acme_event_7", "context_com_acme_context_1"), "s3://transformer-output/run-05/", "transformer-1", false),
+      ProcessedRunId("enriched/archived/run-06", new DateTime(initTime + 30000), new DateTime(1502368136000L + 60000), List("context_com_acme_context_1"), "s3://transformer-output/run-06/", "transformer-1", false),
+      ProcessedRunId("enriched/archived/run-07", new DateTime(initTime + 30000), new DateTime(1502368136000L + 60000), List("context_com_acme_context_10", "context_com_acme_context_11"), "s3://transformer-output/run-07/", "transformer-1", false)
     )
     val expected = List(
       FolderToLoad(
-        ProcessedRunId("enriched/archived/run-04", new DateTime(initTime + 10000), new DateTime(1502368136000L + 30000), List("context_com_acme_context_6"), "s3://transformer-output/run-04/"),
+        ProcessedRunId("enriched/archived/run-04", new DateTime(initTime + 10000), new DateTime(1502368136000L + 30000), List("context_com_acme_context_6"), "s3://transformer-output/run-04/", "transformer-1", false),
         Set("context_com_acme_context_6")
       ),
       FolderToLoad(
-        ProcessedRunId("enriched/archived/run-05", new DateTime(initTime + 20000), new DateTime(1502368136000L + 50000), List("unstruct_event_com_acme_event_7", "context_com_acme_context_1"), "s3://transformer-output/run-05/"),
+        ProcessedRunId("enriched/archived/run-05", new DateTime(initTime + 20000), new DateTime(1502368136000L + 50000), List("unstruct_event_com_acme_event_7", "context_com_acme_context_1"), "s3://transformer-output/run-05/", "transformer-1", false),
         Set("unstruct_event_com_acme_event_7")
       ),
       FolderToLoad(
-        ProcessedRunId("enriched/archived/run-06", new DateTime(initTime + 30000), new DateTime(1502368136000L + 60000), List("context_com_acme_context_1"), "s3://transformer-output/run-06/"),
+        ProcessedRunId("enriched/archived/run-06", new DateTime(initTime + 30000), new DateTime(1502368136000L + 60000), List("context_com_acme_context_1"), "s3://transformer-output/run-06/", "transformer-1", false),
         Set.empty
       ),
       FolderToLoad(
-        ProcessedRunId("enriched/archived/run-07", new DateTime(initTime + 30000), new DateTime(1502368136000L + 60000), List("context_com_acme_context_10", "context_com_acme_context_11"), "s3://transformer-output/run-07/"),
+        ProcessedRunId("enriched/archived/run-07", new DateTime(initTime + 30000), new DateTime(1502368136000L + 60000), List("context_com_acme_context_10", "context_com_acme_context_11"), "s3://transformer-output/run-07/", "transformer-1", false),
         Set("context_com_acme_context_10", "context_com_acme_context_11")
       )
     )
