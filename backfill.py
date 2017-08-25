@@ -30,7 +30,6 @@ def backfill(dynamodb, s3, args):
         if should_skip(run_id, args.startdate):
             if run_manifests.contains(run_id):
                 print("Run manifest already contains {}. Do nothing".format(run_id))
-                skipped = skipped + 1
             else:
                 added = added + 1
                 add(dynamodb, args.manifest_table_name, run_id)
@@ -82,8 +81,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Backfill strawberry run manifest')
 
-    parser.add_argument('--profile', type=str, required=True,
-                        help="AWS Profile to access DynamoDB and S3")
+    parser.add_argument('--aws-access-key-id', type=str, required=True,
+                        help="AWS access key id DynamoDB and S3")
+    parser.add_argument('--aws-secret-access-key', type=str, required=True,
+                        help="AWS secret access key id DynamoDB and S3")
     parser.add_argument('--region', type=str, required=True,
                         help="AWS Region to access DynamoDB and S3")
     parser.add_argument('--manifest-table-name', required=True,
@@ -95,7 +96,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    session = boto3.Session(profile_name=args.profile)
+    session = boto3.Session(aws_access_key_id=args.aws_access_key_id, aws_secret_access_key=args.aws_secret_access_key)
     s3 = session.client('s3')
     dynamodb = session.client('dynamodb', region_name=args.region)
 
