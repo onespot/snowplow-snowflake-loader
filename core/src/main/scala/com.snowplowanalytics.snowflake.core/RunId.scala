@@ -92,7 +92,7 @@ object RunId {
         FreshRunId(run, started, added, skip).asRight
       case (run, started, Some(processed), Some(shredded), Some(saved), None, added, None, skip) =>
         ProcessedRunId(run, started, processed, shredded, saved, added, skip).asRight
-      case (run, started, Some(processed), Some(shredded), Some(saved), Some(loaded), added, Some(loader), ) =>
+      case (run, started, Some(processed), Some(shredded), Some(saved), Some(loaded), added, Some(loader), f) if !f =>  // LoadedRun cannot be skipped
         LoadedRunId(run, started, processed, shredded, saved, loaded, added, loader).asRight
       case (run, started, processed, shredded, saved, loaded, added, loader, skip) =>
         s"Invalid state: ${getStateMessage(run, started, processed, shredded, saved, loaded, added, loader, skip)}".asLeft

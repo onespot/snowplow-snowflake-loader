@@ -8,23 +8,19 @@
 package com.snowplowanalytics.snowflake.core
 
 import cats.implicits._
-
 import java.util.{Map => JMap}
 
 import scala.annotation.tailrec
 import scala.collection.convert.decorateAsJava._
 import scala.collection.convert.decorateAsScala._
 import scala.util.control.NonFatal
-
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDB, AmazonDynamoDBClientBuilder}
 import com.amazonaws.services.dynamodbv2.model._
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
-
+import com.snowplowanalytics.snowflake.core.Config.S3Folder
 import org.joda.time.{DateTime, DateTimeZone}
-
 import com.snowplowanalytics.snowplow.analytics.scalasdk.RunManifests
-
 import com.snowplowanalytics.snowflake.generated.ProjectMetadata
 
 /**
@@ -64,7 +60,7 @@ object ProcessManifest {
       .withTableName(tableName)
       .withItem(Map(
         RunManifests.DynamoDbRunIdAttribute -> new AttributeValue(runId),
-        "StartedAt" -> new AttributeValue().withN(now.toString),
+        "AddedAt" -> new AttributeValue().withN(now.toString),
         "AddedBy" -> new AttributeValue(ProjectMetadata.version),
         "ToSkip" -> new AttributeValue().withBOOL(false)
       ).asJava)
@@ -85,7 +81,7 @@ object ProcessManifest {
       .withAttributeUpdates(Map(
         "ProcessedAt" -> new AttributeValueUpdate().withValue(new AttributeValue().withN(now.toString)),
         "ShredTypes" -> new AttributeValueUpdate().withValue(new AttributeValue().withL(shredTypesDynamo)),
-        "SavedTo" -> new AttributeValueUpdate().withValue(new AttributeValue(outputPath))
+        "SavedTo" -> new AttributeValueUpdate().withValue(new AttributeValue(Config.fixPrefix(outputPath)))
       ).asJava)
 
     dynamoDb.updateItem(request)

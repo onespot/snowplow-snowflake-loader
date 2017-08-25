@@ -24,9 +24,11 @@ object TransformerJob {
     val sc = new SparkContext(config)
 
     jobConfigs.foreach { jobConfig =>
+      println(s"Snowflake Transformer: processing ${jobConfig.runId}. ${System.currentTimeMillis()}")
       ProcessManifest.add(dynamoDB, tableName, jobConfig.runId)
       val shredTypes = process(sc, jobConfig)
       ProcessManifest.markProcessed(dynamoDB, tableName, jobConfig.runId, shredTypes, jobConfig.output)
+      println(s"Snowflake Transformer: processed ${jobConfig.runId}. ${System.currentTimeMillis()}")
     }
   }
 

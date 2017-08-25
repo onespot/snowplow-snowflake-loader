@@ -43,7 +43,7 @@ object Config {
       result || s.startsWith(s"$prefix://")
     }
 
-  private def fixPrefix(s: String): String =
+  private[core] def fixPrefix(s: String): String =
     if (s.startsWith("s3n")) "s3" + s.stripPrefix("s3n")
     else if (s.startsWith("s3a")) "s3" + s.stripPrefix("s3a")
     else s
