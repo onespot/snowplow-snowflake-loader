@@ -28,6 +28,7 @@ object Loader {
     val state = ProcessManifest.scan(dynamoDb, config.manifestTable).map(SnowflakeState.getState) match {
       case Right(s) => s
       case Left(error) =>
+        System.err.println(error)
         sys.exit(1)
     }
 
