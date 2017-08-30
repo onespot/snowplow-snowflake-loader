@@ -158,7 +158,7 @@ object Loader {
 
   /** Try to infer ARRAY/OBJECT type, based on column name */
   def getShredType(columnName: String): Either[String, (String, SnowflakeDatatype)] = {
-    if (columnName.startsWith("context_") && columnName.last.isDigit) {
+    if (columnName.startsWith("contexts_") && columnName.last.isDigit) {
       Right(columnName -> SnowflakeDatatype.JsonArray)
     } else if (columnName.startsWith("unstruct_event_") && columnName.last.isDigit) {
       Right(columnName -> SnowflakeDatatype.JsonObject)
