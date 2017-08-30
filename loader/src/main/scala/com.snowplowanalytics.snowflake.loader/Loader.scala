@@ -31,7 +31,6 @@ object Loader {
         System.err.println(error)
         sys.exit(1)
     }
-    sys.exit(0)
 
     if (state.foldersToLoad.isEmpty) {
       println("Nothing to load, exiting...")
