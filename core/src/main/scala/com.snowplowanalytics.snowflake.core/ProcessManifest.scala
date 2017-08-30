@@ -36,7 +36,7 @@ object ProcessManifest {
     val provider = new AWSStaticCredentialsProvider(credentials)
 
     val s3Client = AmazonS3ClientBuilder.standard().withRegion(awsRegion).withCredentials(provider).build()
-    val dynamodbClient = getDynamoDb(awsAccessKey, awsSecretKey)
+    val dynamodbClient = getDynamoDb(awsAccessKey, awsSecretKey, awsRegion)
 
     val runManifest = RunManifests(dynamodbClient, manifestTable)
     runManifest.create()
@@ -45,11 +45,11 @@ object ProcessManifest {
   }
 
   /** Get DynamoDB client */
-  def getDynamoDb(awsAccessKey: String, awsSecretKey: String) = {
+  def getDynamoDb(awsAccessKey: String, awsSecretKey: String, awsRegion: String) = {
     val credentials = new BasicAWSCredentials(awsAccessKey, awsSecretKey)
     val provider = new AWSStaticCredentialsProvider(credentials)
 
-    AmazonDynamoDBClientBuilder.standard().withCredentials(provider).build()
+    AmazonDynamoDBClientBuilder.standard().withCredentials(provider).withRegion(awsRegion).build()
   }
 
   /** Add runId to manifest, with `StartedAt` attribute */

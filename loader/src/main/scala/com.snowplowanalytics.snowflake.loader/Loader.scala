@@ -24,13 +24,14 @@ object Loader {
   /** Scan state from processing manifest, extract not-loaded folders and lot each of them */
   def run(config: LoaderConfig.LoadConfig): Unit = {
     val connection = Database.getConnection(config)
-    val dynamoDb = ProcessManifest.getDynamoDb(config.awsAccessKey, config.awsSecretKey)
+    val dynamoDb = ProcessManifest.getDynamoDb(config.awsAccessKey, config.awsSecretKey, config.awsRegion)
     val state = ProcessManifest.scan(dynamoDb, config.manifestTable).map(SnowflakeState.getState) match {
       case Right(s) => s
       case Left(error) =>
         System.err.println(error)
         sys.exit(1)
     }
+    sys.exit(0)
 
     if (state.foldersToLoad.isEmpty) {
       println("Nothing to load, exiting...")

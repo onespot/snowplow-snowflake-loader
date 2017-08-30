@@ -33,6 +33,7 @@ object LoaderConfig {
   case class LoadConfig(
     awsAccessKey: String,
     awsSecretKey: String,
+    awsRegion: String,
     manifestTable: String,
 
     snowflakeStage: String,
@@ -70,6 +71,7 @@ object LoaderConfig {
   private case class RawConfig(
     awsAccessKey: String,
     awsSecretKey: String,
+    awsRegion: String,
     manifestTable: String,
 
     stageUrl: String,
@@ -114,6 +116,7 @@ object LoaderConfig {
       Right(LoaderConfig.LoadConfig(
         rawConfig.awsAccessKey,
         rawConfig.awsSecretKey,
+        rawConfig.awsRegion,
         rawConfig.manifestTable,
 
         rawConfig.snowflakeStage,
@@ -130,7 +133,7 @@ object LoaderConfig {
   /**
     * Starting raw value, required by `parser`
     */
-  private val rawCliConfig = RawConfig("", "", "", "", "", "", "", "", "", "", None, "noop")
+  private val rawCliConfig = RawConfig("", "", "", "", "", "", "", "", "", "", "", None, "noop")
 
   private val parser = new scopt.OptionParser[RawConfig](Temporary.LoaderName + "-" + ProjectMetadata.version + ".jar") {
     head(Temporary.LoaderName, ProjectMetadata.version)
@@ -220,6 +223,12 @@ object LoaderConfig {
           .valueName("key")
           .action((x, c) => c.copy(awsSecretKey = x))
           .text("AWS Secret Access Key"),
+
+        opt[String]("aws-region")
+          .required()
+          .valueName("region")
+          .action((x, c) => c.copy(awsRegion = x))
+          .text("AWS Region to access DynamoDB"),
 
         opt[String]("manifest-table")
           .required()

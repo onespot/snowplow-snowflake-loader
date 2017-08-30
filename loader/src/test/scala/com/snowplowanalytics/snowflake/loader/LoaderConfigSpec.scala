@@ -46,6 +46,7 @@ class LoaderConfigSpec extends Specification { def is = s2"""
 
       "--aws-access-key-id", "AAAA",
       "--aws-secret-access-key", "abcd",
+      "--aws-region", "us-east-1",
       "--manifest-table", "strawberry-manifest",
 
       "--stage-name", "some_stage",
@@ -58,7 +59,7 @@ class LoaderConfigSpec extends Specification { def is = s2"""
       "--db", "test_db").toArray
 
     val expected = LoaderConfig.LoadConfig(
-      "AAAA", "abcd", "strawberry-manifest",
+      "AAAA", "abcd", "us-east-1", "strawberry-manifest",
       "some_stage", "anton", "secret", "snowplow", "snowplow_wh", "test_db", "atomic")
 
     LoaderConfig.parse(args) must beSome(Right(expected))

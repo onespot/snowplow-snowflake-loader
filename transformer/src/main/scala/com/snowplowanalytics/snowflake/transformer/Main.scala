@@ -24,7 +24,7 @@ object Main {
           appConfig.enrichedInput)
 
         val configs = runFolders.map(TransformerJobConfig(appConfig.enrichedInput, appConfig.enrichedOutput, _))
-        val dynamoDb = ProcessManifest.getDynamoDb(appConfig.awsAccessKey, appConfig.awsSecretKey)
+        val dynamoDb = ProcessManifest.getDynamoDb(appConfig.awsAccessKey, appConfig.awsSecretKey, appConfig.awsRegion)
         TransformerJob.run(dynamoDb, appConfig.manifestTable, configs)
 
       case Some(Left(error)) =>
