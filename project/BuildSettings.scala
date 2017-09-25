@@ -15,14 +15,14 @@ import sbtassembly._
 import sbtassembly.AssemblyKeys._
 
 /**
- * Common settings-patterns for Snowplow apps and libaries.
+ * Common settings-patterns for Snowplow apps and libraries.
  * To enable any of these you need to explicitly add Settings value to build.sbt
  */
 object BuildSettings {
 
   lazy val buildSettings = Seq[Setting[_]](
     name := "snowplow-snowflake-loader",
-    version := "0.1.0",
+    version := "0.2.0",
     organization := "com.snowplowanalytics",
     scalaVersion := "2.11.11",
     resolvers ++= Seq(
