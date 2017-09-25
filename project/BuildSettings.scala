@@ -22,7 +22,7 @@ object BuildSettings {
 
   lazy val buildSettings = Seq[Setting[_]](
     name := "snowplow-snowflake-loader",
-    version := "0.2.0",
+    version := "0.2.0-rc1",
     organization := "com.snowplowanalytics",
     scalaVersion := "2.11.11",
     resolvers ++= Seq(
@@ -93,6 +93,7 @@ object BuildSettings {
       case "project.clj" => MergeStrategy.discard // Leiningen build files
       case x if x.startsWith("META-INF") => MergeStrategy.discard
       case x if x.endsWith(".html") => MergeStrategy.discard
+      case x if x.endsWith("public-suffix-list.txt") => MergeStrategy.last
       case PathList("org", "apache", "spark", "unused", tail@_*) => MergeStrategy.first
       case x =>
         val oldStrategy = (assemblyMergeStrategy in assembly).value
