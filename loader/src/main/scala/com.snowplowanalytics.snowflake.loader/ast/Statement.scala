@@ -43,6 +43,8 @@ object Statement {
         val recordDelRendered = s"RECORD_DELIMITER = '${recordDelimiter.getOrElse("NONE")}'"
         val fieldDelRendered = s"FIELD_DELIMITER = '${fieldDelimiter.getOrElse("NONE")}'"
         SqlStatement(s"CREATE FILE FORMAT IF NOT EXISTS $name TYPE = CSV $recordDelRendered $fieldDelRendered")
+      case CreateFileFormat.CreateJsonFormat(name) =>
+        SqlStatement(s"CREATE FILE FORMAT IF NOT EXISTS $name TYPE = JSON")
     }
   }
 

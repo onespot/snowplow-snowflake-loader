@@ -12,4 +12,6 @@ sealed trait CreateFileFormat
 object CreateFileFormat {
   // TODO: add other format and options
   case class CreateCsvFormat(name: String, recordDelimiter: Option[String], fieldDelimiter: Option[String]) extends CreateFileFormat
+
+  case class CreateJsonFormat(name: String) extends CreateFileFormat
 }

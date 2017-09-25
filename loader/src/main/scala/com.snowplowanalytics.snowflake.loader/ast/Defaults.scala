@@ -8,7 +8,7 @@
 package com.snowplowanalytics.snowflake.loader.ast
 
 object Defaults {
-  val FileFormat = "snowplow_enriched"
+  val FileFormat = "snowplow_enriched_json"   // was snowplow_enriched in 0.1.0
   val Schema = "atomic"
   val Table = "events"
   val TempTableColumn = "enriched_data"
