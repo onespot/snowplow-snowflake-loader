@@ -20,6 +20,7 @@ class LoaderConfigSpec extends Specification { def is = s2"""
 
       "--aws-access-key-id", "AAAA",
       "--aws-secret-access-key", "abcd",
+      "--aws-region", "us-west-1",
       "--manifest-table", "strawberry-manifest",
 
       "--stage-url", "s3://strawberry/output",
@@ -33,7 +34,7 @@ class LoaderConfigSpec extends Specification { def is = s2"""
       "--db", "test_db").toArray
 
     val expected = LoaderConfig.SetupConfig(
-      "AAAA", "abcd", "strawberry-manifest",
+      "AAAA", "abcd", "us-west-1", "strawberry-manifest",
       "s3://strawberry/output/", "some_stage",
       "anton", "secret", "snowplow", "snowplow_wh", "test_db", "atomic")
 

@@ -17,8 +17,15 @@ object Database {
   def getConnection(config: LoaderConfig): Connection = {
     Class.forName("net.snowflake.client.jdbc.SnowflakeDriver")
 
+    // US West is default: https://docs.snowflake.net/manuals/user-guide/jdbc-configure.html#jdbc-driver-connection-string
+    val host = if (config.awsRegion == "us-west-1")
+      s"${config.snowflakeAccount}.snowflakecomputing.com"
+    else
+      s"${config.snowflakeAccount}.${config.awsRegion}.snowflakecomputing.com"
+
     // Build connection properties
     val properties = new Properties()
+
     properties.put("user", config.snowflakeUser)
     properties.put("password", config.snowflakePassword)
     properties.put("account", config.snowflakeAccount)
@@ -26,7 +33,7 @@ object Database {
     properties.put("db", config.snowflakeDb)
     properties.put("schema", config.snowflakeSchema)
 
-    val connectStr = s"jdbc:snowflake://${config.snowflakeAccount}.snowflakecomputing.com"
+    val connectStr = s"jdbc:snowflake://$host"
     DriverManager.getConnection(connectStr, properties)
   }
 
