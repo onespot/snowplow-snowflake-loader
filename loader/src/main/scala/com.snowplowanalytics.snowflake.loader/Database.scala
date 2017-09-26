@@ -53,4 +53,15 @@ object Database {
     }
     statement.close()
   }
+
+  /** Execute SQL query and count rows */
+  def executeAndCountRows[S: Statement](connection: Connection, ast: S): Int = {
+    val statement = connection.createStatement()
+    val rs = statement.executeQuery(ast.getStatement.value)
+    var i = 0
+    while (rs.next()) {
+      i = i + 1
+    }
+    i
+  }
 }
