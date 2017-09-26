@@ -51,9 +51,11 @@ object Loader {
         } catch {
           case NonFatal(e) =>
             val message = if (folder.newColumns.isEmpty)
-              s"Error during ${folder.folderToLoad.runId} load. No new columns were added, safe to rerun.\n${e.getMessage}"
+              s"Error during ${folder.folderToLoad.runId} load. Details: \n${e.getMessage}\n" +
+                s"No new columns were added, safe to rerun."
             else
-              s"Error during ${folder.folderToLoad.runId} load. Following columns need to be dropped: ${folder.newColumns.mkString(", ")}.\n${e.getMessage}"
+              s"Error during ${folder.folderToLoad.runId} load. Details: \n${e.getMessage}\n" +
+                s"Following columns were added during load-preparation and must be dropped to restore state: ${folder.newColumns.mkString(", ")}"
             System.err.println(message)
             sys.exit(1)
         }
