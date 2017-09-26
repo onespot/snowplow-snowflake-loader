@@ -100,4 +100,42 @@ object Statement {
     def getStatement(ast: CopyInto): SqlStatement =
       SqlStatement(s"COPY INTO ${ast.schema}.${ast.table}(${ast.columns.mkString(",")}) FROM @${ast.from.schema}.${ast.from.stageName}/${ast.from.path} CREDENTIALS = (AWS_KEY_ID = '${ast.credentials.awsAccessKeyId}' AWS_SECRET_KEY = '${ast.credentials.awsSecretKey}') FILE_FORMAT = (FORMAT_NAME = '${ast.fileFormat.schema}.${ast.fileFormat.formatName}')" )
   }
+
+  implicit object ShowStageStatement extends Statement[Show.ShowStages] {
+    def getStatement(ast: Show.ShowStages): SqlStatement = {
+      val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
+      val scopePattern = ast.schema.map(s => s"IN $s").getOrElse("")
+      SqlStatement(s"SHOW stages $schemaPattern$scopePattern")
+    }
+  }
+
+  implicit object ShowSchemasStatement extends Statement[Show.ShowSchemas] {
+    def getStatement(ast: Show.ShowSchemas): SqlStatement = {
+      val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
+      SqlStatement(s"SHOW schemas $schemaPattern")
+    }
+  }
+
+  implicit object ShowTablesStatement extends Statement[Show.ShowTables] {
+    def getStatement(ast: Show.ShowTables): SqlStatement = {
+      val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
+      val scopePattern = ast.schema.map(s => s"IN $s").getOrElse("")
+      SqlStatement(s"SHOW tables $schemaPattern$scopePattern")
+    }
+  }
+
+  implicit object ShowFileFormatsStatement extends Statement[Show.ShowFileFormats] {
+    def getStatement(ast: Show.ShowFileFormats): SqlStatement = {
+      val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
+      val scopePattern = ast.schema.map(s => s"IN $s").getOrElse("")
+      SqlStatement(s"SHOW file formats $schemaPattern$scopePattern")
+    }
+  }
+
+  implicit object ShowWarehousesStatement extends Statement[Show.ShowWarehouses] {
+    def getStatement(ast: Show.ShowWarehouses): SqlStatement = {
+      val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
+      SqlStatement(s"SHOW warehouses $schemaPattern")
+    }
+  }
 }
