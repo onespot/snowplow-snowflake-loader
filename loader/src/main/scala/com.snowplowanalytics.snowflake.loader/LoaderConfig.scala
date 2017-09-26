@@ -16,6 +16,7 @@ import com.snowplowanalytics.snowflake.loader.ast.Defaults
 sealed trait LoaderConfig {
   def awsAccessKey: String
   def awsSecretKey: String
+  def awsRegion: String
   def manifestTable: String
 
   def snowflakeStage: String
@@ -49,6 +50,7 @@ object LoaderConfig {
   case class SetupConfig(
     awsAccessKey: String,
     awsSecretKey: String,
+    awsRegion: String,
     manifestTable: String,
 
     stageUrl: S3Folder,
@@ -98,6 +100,7 @@ object LoaderConfig {
           Right(LoaderConfig.SetupConfig(
             rawConfig.awsAccessKey,
             rawConfig.awsSecretKey,
+            rawConfig.awsRegion,
             rawConfig.manifestTable,
 
             stageUrl,
@@ -153,6 +156,12 @@ object LoaderConfig {
           .valueName("key")
           .action((x, c) => c.copy(awsSecretKey = x))
           .text("AWS Secret Access Key"),
+
+        opt[String]("aws-region")
+          .required()
+          .valueName("region")
+          .action((x, c) => c.copy(awsRegion = x))
+          .text("AWS Region to connect to Snowflake"),
 
         opt[String]("manifest-table")
           .required()
@@ -228,7 +237,7 @@ object LoaderConfig {
           .required()
           .valueName("region")
           .action((x, c) => c.copy(awsRegion = x))
-          .text("AWS Region to access DynamoDB"),
+          .text("AWS Region"),
 
         opt[String]("manifest-table")
           .required()
