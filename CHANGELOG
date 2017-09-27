@@ -1,3 +1,15 @@
+Version 0.2.0 (2017-10-XX)
+--------------------------
+Change file format to JSON (#7)
+Add preliminary checks for Snowflake entities (#11)
+Add support for other regions (#6)
+Separate AWS region from Snowflake region (#12)
+Add deployment to all snowplow-hosted-assets buckets (#4)
+Bump Snowflake JDBC to 3.2.5 (#2)
+Improve load error message (#5)
+Create test specification to check atomic.events DDL correctness (#8)
+Refactor getUnprocessed to use DynamoDB scan (#17)
+
 Version 0.1.0 (2017-08-31)
 --------------------------
 Initial release
