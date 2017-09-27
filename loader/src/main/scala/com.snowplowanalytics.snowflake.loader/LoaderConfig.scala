@@ -16,9 +16,9 @@ import com.snowplowanalytics.snowflake.loader.ast.Defaults
 sealed trait LoaderConfig {
   def awsAccessKey: String
   def awsSecretKey: String
-  def awsRegion: String
   def manifestTable: String
 
+  def snowflakeRegion: String
   def snowflakeStage: String
   def snowflakeUser: String
   def snowflakePassword: String
@@ -37,6 +37,7 @@ object LoaderConfig {
     awsRegion: String,
     manifestTable: String,
 
+    snowflakeRegion: String,
     snowflakeStage: String,
     snowflakeUser: String,
     snowflakePassword: String,
@@ -50,11 +51,11 @@ object LoaderConfig {
   case class SetupConfig(
     awsAccessKey: String,
     awsSecretKey: String,
-    awsRegion: String,
     manifestTable: String,
 
     stageUrl: S3Folder,
 
+    snowflakeRegion: String,
     snowflakeStage: String,
     snowflakeUser: String,
     snowflakePassword: String,
@@ -78,6 +79,7 @@ object LoaderConfig {
 
     stageUrl: String,
 
+    snowflakeRegion: String,
     snowflakeStage: String,
     snowflakeUser: String,
     snowflakePassword: String,
@@ -98,37 +100,40 @@ object LoaderConfig {
       S3Folder.parse(rawConfig.stageUrl) match {
         case Right(stageUrl) =>
           Right(LoaderConfig.SetupConfig(
-            rawConfig.awsAccessKey,
-            rawConfig.awsSecretKey,
-            rawConfig.awsRegion,
-            rawConfig.manifestTable,
+            awsAccessKey = rawConfig.awsAccessKey,
+            awsSecretKey = rawConfig.awsSecretKey,
+            manifestTable = rawConfig.manifestTable,
 
-            stageUrl,
+            stageUrl = stageUrl,
 
-            rawConfig.snowflakeStage,
-            rawConfig.snowflakeUser,
-            rawConfig.snowflakePassword,
-            rawConfig.snowflakeAccount,
-            rawConfig.snowflakeWarehouse,
-            rawConfig.snowflakeDb,
-            rawConfig.snowflakeSchema.getOrElse(Defaults.Schema)))
+            snowflakeRegion = rawConfig.snowflakeRegion,
+            snowflakeStage = rawConfig.snowflakeStage,
+            snowflakeUser = rawConfig.snowflakeUser,
+            snowflakePassword = rawConfig.snowflakePassword,
+            snowflakeAccount = rawConfig.snowflakeAccount,
+            snowflakeWarehouse = rawConfig.snowflakeWarehouse,
+            snowflakeDb = rawConfig.snowflakeDb,
+            snowflakeSchema = rawConfig.snowflakeSchema.getOrElse(Defaults.Schema)))
+
         case Left(e) =>
           Left(s"${rawConfig.stageUrl} is invalid S3 stage. " + e)
       }
     case "load" =>
       Right(LoaderConfig.LoadConfig(
-        rawConfig.awsAccessKey,
-        rawConfig.awsSecretKey,
-        rawConfig.awsRegion,
-        rawConfig.manifestTable,
+        awsAccessKey = rawConfig.awsAccessKey,
+        awsSecretKey = rawConfig.awsSecretKey,
+        awsRegion = rawConfig.awsRegion,
+        manifestTable = rawConfig.manifestTable,
 
-        rawConfig.snowflakeStage,
-        rawConfig.snowflakeUser,
-        rawConfig.snowflakePassword,
-        rawConfig.snowflakeAccount,
-        rawConfig.snowflakeWarehouse,
-        rawConfig.snowflakeDb,
-        rawConfig.snowflakeSchema.getOrElse(Defaults.Schema)))
+        snowflakeRegion = rawConfig.snowflakeRegion,
+        snowflakeStage = rawConfig.snowflakeStage,
+        snowflakeUser = rawConfig.snowflakeUser,
+        snowflakePassword = rawConfig.snowflakePassword,
+        snowflakeAccount = rawConfig.snowflakeAccount,
+        snowflakeWarehouse = rawConfig.snowflakeWarehouse,
+        snowflakeDb = rawConfig.snowflakeDb,
+        snowflakeSchema = rawConfig.snowflakeSchema.getOrElse(Defaults.Schema)))
+
     case "noop" => Left(s"Either setup or load actions must be provided")
     case command => Left(s"Unknown action $command")
   }
@@ -136,7 +141,7 @@ object LoaderConfig {
   /**
     * Starting raw value, required by `parser`
     */
-  private val rawCliConfig = RawConfig("", "", "", "", "", "", "", "", "", "", "", None, "noop")
+  private val rawCliConfig = RawConfig("", "", "", "", "", "", "", "", "", "", "", "", None, "noop")
 
   private val parser = new scopt.OptionParser[RawConfig](Temporary.LoaderName + "-" + ProjectMetadata.version + ".jar") {
     head(Temporary.LoaderName, ProjectMetadata.version)
@@ -157,17 +162,17 @@ object LoaderConfig {
           .action((x, c) => c.copy(awsSecretKey = x))
           .text("AWS Secret Access Key"),
 
-        opt[String]("aws-region")
-          .required()
-          .valueName("region")
-          .action((x, c) => c.copy(awsRegion = x))
-          .text("AWS Region to connect to Snowflake"),
-
         opt[String]("manifest-table")
           .required()
           .valueName("<value>")
           .action((x, c) => c.copy(manifestTable = x))
           .text("AWS DynamoDB table to store process manifests"),
+
+        opt[String]("snowflake-region")
+          .required()
+          .valueName("region")
+          .action((x, c) => c.copy(snowflakeRegion = x))
+          .text("AWS Region to connect to Snowflake"),
 
         opt[String]("stage-url")
           .required()
@@ -244,6 +249,12 @@ object LoaderConfig {
           .valueName("table-name")
           .action((x, c) => c.copy(manifestTable = x))
           .text("AWS DynamoDB table to store process manifests"),
+
+        opt[String]("snowflake-region")
+          .required()
+          .valueName("region")
+          .action((x, c) => c.copy(snowflakeRegion = x))
+          .text("AWS Region to connect to Snowflake"),
 
         opt[String]("stage-name")
           .required()

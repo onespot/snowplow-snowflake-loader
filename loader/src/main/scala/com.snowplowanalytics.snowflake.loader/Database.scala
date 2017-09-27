@@ -18,10 +18,10 @@ object Database {
     Class.forName("net.snowflake.client.jdbc.SnowflakeDriver")
 
     // US West is default: https://docs.snowflake.net/manuals/user-guide/jdbc-configure.html#jdbc-driver-connection-string
-    val host = if (config.awsRegion == "us-west-1")
+    val host = if (config.snowflakeRegion == "us-west-1")
       s"${config.snowflakeAccount}.snowflakecomputing.com"
     else
-      s"${config.snowflakeAccount}.${config.awsRegion}.snowflakecomputing.com"
+      s"${config.snowflakeAccount}.${config.snowflakeRegion}.snowflakecomputing.com"
 
     // Build connection properties
     val properties = new Properties()

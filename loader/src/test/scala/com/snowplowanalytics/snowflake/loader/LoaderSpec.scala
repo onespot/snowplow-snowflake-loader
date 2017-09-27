@@ -57,6 +57,7 @@ class LoaderSpec extends Specification { def is = s2"""
       awsSecretKey = "secretKey",
       awsRegion = "awsRegion",
       manifestTable = "snoflake-manifest",
+      snowflakeRegion = "ue-east-1",
       snowflakeStage = "snowplow-stage",
       snowflakeUser = "snowfplow-loader",
       snowflakePassword = "super-secret",
