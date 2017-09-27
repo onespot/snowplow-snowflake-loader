@@ -18,7 +18,6 @@ object Dependencies {
     val spark            = "2.1.0"
     val scopt            = "3.7.0"
     val analyticsSdk     = "0.2.0"
-    val scalaz7          = "7.0.9"
     val json4sJackson    = "3.2.11"
     val cats             = "0.9.0"
     // Scala (test only)
@@ -35,7 +34,6 @@ object Dependencies {
   val spark            = "org.apache.spark"      %% "spark-core"                   % V.spark          % "provided"
   val scopt            = "com.github.scopt"      %% "scopt"                        % V.scopt
   val analyticsSdk     = "com.snowplowanalytics" %% "snowplow-scala-analytics-sdk" % V.analyticsSdk
-  val scalaz7          = "org.scalaz"            %% "scalaz-core"                  % V.scalaz7
   val json4sJackson    = "org.json4s"            %% "json4s-jackson"               % V.json4sJackson
   val cats             = "org.typelevel"         %% "cats-core"                    % V.cats
 
