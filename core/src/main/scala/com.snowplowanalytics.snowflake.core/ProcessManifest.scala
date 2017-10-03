@@ -14,12 +14,14 @@ import scala.annotation.tailrec
 import scala.collection.convert.decorateAsJava._
 import scala.collection.convert.decorateAsScala._
 import scala.util.control.NonFatal
+
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDB, AmazonDynamoDBClientBuilder}
 import com.amazonaws.services.dynamodbv2.model._
-import com.amazonaws.services.s3.AmazonS3ClientBuilder
-import com.snowplowanalytics.snowflake.core.Config.S3Folder
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
+
 import org.joda.time.{DateTime, DateTimeZone}
+
 import com.snowplowanalytics.snowplow.analytics.scalasdk.RunManifests
 import com.snowplowanalytics.snowflake.generated.ProjectMetadata
 
@@ -31,18 +33,18 @@ object ProcessManifest {
   type DbItem = JMap[String, AttributeValue]
 
   /** List S3 folders not added to manifest (in any way, including loaded, skipped, fresh etc) */
-  def getUnprocessed(awsAccessKey: String, awsSecretKey: String, awsRegion: String, manifestTable: String, enrichedInput: String) = {
-    val credentials = new BasicAWSCredentials(awsAccessKey, awsSecretKey)
-    val provider = new AWSStaticCredentialsProvider(credentials)
-
-    val s3Client = AmazonS3ClientBuilder.standard().withRegion(awsRegion).withCredentials(provider).build()
-    val dynamodbClient = getDynamoDb(awsAccessKey, awsSecretKey, awsRegion)
-
-    val runManifest = RunManifests(dynamodbClient, manifestTable)
-    runManifest.create()
+  def getUnprocessed(s3Client: AmazonS3, dynamodbClient: AmazonDynamoDB, manifestTable: String, enrichedInput: String) = {
     val allRuns = RunManifests.listRunIds(s3Client, enrichedInput)
-    allRuns.filterNot(runManifest.contains)
+
+    scan(dynamodbClient, manifestTable) match {
+      case Right(state) => Right(allRuns.filterNot(contains(state, _)))
+      case Left(error) => Left(error)
+    }
   }
+
+  /** Check if set of run ids contains particular folder */
+  def contains(state: List[RunId], folder: String): Boolean =
+    state.map(folder => folder.runIdFolder).contains(folder)
 
   /** Get DynamoDB client */
   def getDynamoDb(awsAccessKey: String, awsSecretKey: String, awsRegion: String) = {
@@ -50,6 +52,14 @@ object ProcessManifest {
     val provider = new AWSStaticCredentialsProvider(credentials)
 
     AmazonDynamoDBClientBuilder.standard().withCredentials(provider).withRegion(awsRegion).build()
+  }
+
+  /** Get S3 client */
+  def getS3(awsAccessKey: String, awsSecretKey: String, awsRegion: String) = {
+    val credentials = new BasicAWSCredentials(awsAccessKey, awsSecretKey)
+    val provider = new AWSStaticCredentialsProvider(credentials)
+
+    AmazonS3ClientBuilder.standard().withRegion(awsRegion).withCredentials(provider).build()
   }
 
   /** Add runId to manifest, with `StartedAt` attribute */
