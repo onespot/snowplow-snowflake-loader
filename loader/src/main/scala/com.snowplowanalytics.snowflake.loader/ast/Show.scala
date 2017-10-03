@@ -13,4 +13,6 @@ object Show {
   case class ShowFileFormats(pattern: Option[String], schema: Option[String])
 
   case class ShowWarehouses(pattern: Option[String])
+
+  case class ShowColumns(pattern: Option[String], schema: Option[String], table: Option[String])
 }

@@ -22,7 +22,7 @@ import LoaderConfig.LoadConfig
 object Loader {
 
   /** Check that necessary Snowflake entities are available before actual load */
-  def preliminaryChecks(connection: Connection, schemaName: String, stageName: String, warehouseName: String): ValidatedNel[String, Unit] = {
+  def preliminaryChecks(connection: Connection, schemaName: String, stageName: String, warehouseName: String, columns: List[String]): ValidatedNel[String, Unit] = {
     val schema = if (Database.executeAndCountRows(connection, Show.ShowSchemas(Some(schemaName))) < 1)
       s"Schema $schemaName does not exist".invalidNel
     else ().validNel
@@ -39,7 +39,21 @@ object Loader {
       s"Warehouse $warehouseName does not exist".invalidNel
     else ().validNel
 
-    (schema, stage, table, fileFormat, warehouse).map5 { (_: Unit, _: Unit, _: Unit, _: Unit, _: Unit) => () }
+    val newColumns = preliminaryCheckColumns(connection, schemaName, columns)
+
+    (schema, stage, table, fileFormat, warehouse, newColumns).map6 {
+      (_: Unit, _: Unit, _: Unit, _: Unit, _: Unit, _: Unit) => ()
+    }
+  }
+
+  /** Check that no new columns already exist */
+  def preliminaryCheckColumns(connection: Connection, schemaName: String, columns: List[String]): ValidatedNel[String, Unit] = {
+    val validated = columns.map { column =>
+      val count = Database.executeAndCountRows(connection, Show.ShowColumns(Some(column), Some(schemaName), Some(Defaults.Table)))
+      if (count == 0) ().validNel
+      else s"Column $column exists".invalidNel
+    }
+    validated.sequence.void
   }
 
   /** Scan state from processing manifest, extract not-loaded folders and lot each of them */
@@ -53,7 +67,8 @@ object Loader {
         sys.exit(1)
     }
 
-    preliminaryChecks(connection, config.snowflakeSchema, config.snowflakeStage, config.snowflakeWarehouse) match {
+    val allColumns = state.foldersToLoad.flatMap(_.newColumns)
+    preliminaryChecks(connection, config.snowflakeSchema, config.snowflakeStage, config.snowflakeWarehouse, allColumns) match {
       case Validated.Valid(()) => println("Preliminary checks passed")
       case Validated.Invalid(errors) =>
         val message = s"Preliminary checks failed. ${errors.toList.mkString(", ")}"

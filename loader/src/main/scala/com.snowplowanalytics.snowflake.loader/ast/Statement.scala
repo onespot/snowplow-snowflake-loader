@@ -104,7 +104,7 @@ object Statement {
   implicit object ShowStageStatement extends Statement[Show.ShowStages] {
     def getStatement(ast: Show.ShowStages): SqlStatement = {
       val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
-      val scopePattern = ast.schema.map(s => s"IN $s").getOrElse("")
+      val scopePattern = ast.schema.map(s => s" IN $s").getOrElse("")
       SqlStatement(s"SHOW stages $schemaPattern$scopePattern")
     }
   }
@@ -119,23 +119,41 @@ object Statement {
   implicit object ShowTablesStatement extends Statement[Show.ShowTables] {
     def getStatement(ast: Show.ShowTables): SqlStatement = {
       val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
-      val scopePattern = ast.schema.map(s => s"IN $s").getOrElse("")
+      val scopePattern = ast.schema.map(s => s" IN $s").getOrElse("")
       SqlStatement(s"SHOW tables $schemaPattern$scopePattern")
     }
   }
 
   implicit object ShowFileFormatsStatement extends Statement[Show.ShowFileFormats] {
     def getStatement(ast: Show.ShowFileFormats): SqlStatement = {
-      val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
-      val scopePattern = ast.schema.map(s => s"IN $s").getOrElse("")
-      SqlStatement(s"SHOW file formats $schemaPattern$scopePattern")
+      val pattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
+      val scopePattern = ast.schema.map(s => s" IN $s").getOrElse("")
+      SqlStatement(s"SHOW file formats$pattern$scopePattern")
     }
   }
 
   implicit object ShowWarehousesStatement extends Statement[Show.ShowWarehouses] {
     def getStatement(ast: Show.ShowWarehouses): SqlStatement = {
-      val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
-      SqlStatement(s"SHOW warehouses $schemaPattern")
+      val pattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
+      SqlStatement(s"SHOW warehouses$pattern")
+    }
+  }
+
+  implicit object ShowColumnsStatement extends Statement[Show.ShowColumns] {
+    def getStatement(ast: Show.ShowColumns): SqlStatement = {
+      val pattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
+      val scope = ast.schema match {
+        case Some(schema) => ast.table match {
+          case Some(table) => s" IN $schema.$table"
+          case None => s" IN ${ast.table}"
+        }
+        case None => ast.table match {
+          case Some(table) => s" IN $table"
+          case None => ""
+        }
+      }
+
+      SqlStatement(s"SHOW columns$pattern$scope")
     }
   }
 }
