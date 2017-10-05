@@ -17,8 +17,15 @@ object Database {
   def getConnection(config: LoaderConfig): Connection = {
     Class.forName("net.snowflake.client.jdbc.SnowflakeDriver")
 
+    // US West is default: https://docs.snowflake.net/manuals/user-guide/jdbc-configure.html#jdbc-driver-connection-string
+    val host = if (config.snowflakeRegion == "us-west-1")
+      s"${config.snowflakeAccount}.snowflakecomputing.com"
+    else
+      s"${config.snowflakeAccount}.${config.snowflakeRegion}.snowflakecomputing.com"
+
     // Build connection properties
     val properties = new Properties()
+
     properties.put("user", config.snowflakeUser)
     properties.put("password", config.snowflakePassword)
     properties.put("account", config.snowflakeAccount)
@@ -26,7 +33,7 @@ object Database {
     properties.put("db", config.snowflakeDb)
     properties.put("schema", config.snowflakeSchema)
 
-    val connectStr = s"jdbc:snowflake://${config.snowflakeAccount}.snowflakecomputing.com"
+    val connectStr = s"jdbc:snowflake://$host"
     DriverManager.getConnection(connectStr, properties)
   }
 
@@ -45,5 +52,16 @@ object Database {
       println(rs.getString("status"))
     }
     statement.close()
+  }
+
+  /** Execute SQL query and count rows */
+  def executeAndCountRows[S: Statement](connection: Connection, ast: S): Int = {
+    val statement = connection.createStatement()
+    val rs = statement.executeQuery(ast.getStatement.value)
+    var i = 0
+    while (rs.next()) {
+      i = i + 1
+    }
+    i
   }
 }

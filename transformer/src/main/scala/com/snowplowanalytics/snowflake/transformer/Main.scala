@@ -15,17 +15,22 @@ object Main {
     TransformerConfig.parse(args) match {
       case Some(Right(appConfig)) =>
 
-        // Get run folders that are not in RunManifest in any form
-        val runFolders = ProcessManifest.getUnprocessed(
-          appConfig.awsAccessKey,
-          appConfig.awsSecretKey,
-          appConfig.awsRegion,
-          appConfig.manifestTable,
-          appConfig.enrichedInput)
-
-        val configs = runFolders.map(TransformerJobConfig(appConfig.enrichedInput, appConfig.enrichedOutput, _))
+        val s3 = ProcessManifest.getS3(appConfig.awsAccessKey, appConfig.awsSecretKey, appConfig.awsRegion)
         val dynamoDb = ProcessManifest.getDynamoDb(appConfig.awsAccessKey, appConfig.awsSecretKey, appConfig.awsRegion)
-        TransformerJob.run(dynamoDb, appConfig.manifestTable, configs)
+
+        // Get run folders that are not in RunManifest in any form
+        val runFolders = ProcessManifest.getUnprocessed(s3, dynamoDb, appConfig.manifestTable, appConfig.enrichedInput)
+
+        runFolders match {
+          case Right(folders) =>
+            val configs = folders.map(TransformerJobConfig(appConfig.enrichedInput, appConfig.enrichedOutput, _))
+            TransformerJob.run(dynamoDb, appConfig.manifestTable, configs)
+          case Left(error) =>
+            println("Cannot get list of unprocessed folders")
+            println(error)
+            sys.exit(1)
+        }
+
 
       case Some(Left(error)) =>
         // Failed transformation

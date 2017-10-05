@@ -19,7 +19,7 @@ object Initializer {
     Database.executeAndOutput(connection, CreateSchema(config.snowflakeSchema))
     Database.executeAndOutput(connection, AtomicDef.getTable(config.snowflakeSchema))
     Database.executeAndOutput(connection, CreateWarehouse(config.snowflakeWarehouse, size = Some(CreateWarehouse.XSmall)))
-    Database.executeAndOutput(connection, CreateFileFormat.CreateCsvFormat(Defaults.FileFormat, Some("\n"), None))
+    Database.executeAndOutput(connection, CreateFileFormat.CreateJsonFormat(Defaults.FileFormat))
     Database.executeAndOutput(connection, CreateStage(
       config.snowflakeStage, config.stageUrl, Defaults.FileFormat, config.snowflakeSchema))
 
