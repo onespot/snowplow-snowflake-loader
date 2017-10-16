@@ -40,6 +40,8 @@ lazy val commonDependencies = Seq(
   Dependencies.analyticsSdk,
   Dependencies.scopt,
   Dependencies.json4sJackson,
+  Dependencies.s3,
+  Dependencies.dynamodb,
   // Scala (test-only)
   Dependencies.specs2,
   Dependencies.scalazSpecs2,
