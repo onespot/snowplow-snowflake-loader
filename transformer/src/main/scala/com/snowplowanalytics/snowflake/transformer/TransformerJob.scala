@@ -7,7 +7,7 @@
  */
 package com.snowplowanalytics.snowflake.transformer
 
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.SparkContext
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
 
@@ -16,13 +16,7 @@ import com.snowplowanalytics.snowflake.core.ProcessManifest
 object TransformerJob {
 
   /** Process all directories, saving state into DynamoDB */
-  def run(dynamoDB: AmazonDynamoDB, tableName: String, jobConfigs: List[TransformerJobConfig]): Unit = {
-    val config = new SparkConf()
-      .setAppName("snowflake-transformer")
-      .setIfMissing("spark.master", "local[*]")
-
-    val sc = new SparkContext(config)
-
+  def run(sc: SparkContext, dynamoDB: AmazonDynamoDB, tableName: String, jobConfigs: List[TransformerJobConfig]): Unit = {
     jobConfigs.foreach { jobConfig =>
       println(s"Snowflake Transformer: processing ${jobConfig.runId}. ${System.currentTimeMillis()}")
       ProcessManifest.add(dynamoDB, tableName, jobConfig.runId)
