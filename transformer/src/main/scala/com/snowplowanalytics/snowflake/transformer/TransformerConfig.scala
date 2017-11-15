@@ -7,7 +7,6 @@
  */
 package com.snowplowanalytics.snowflake.transformer
 
-import com.snowplowanalytics.snowflake.core.Temporary
 import com.snowplowanalytics.snowflake.core.Config.S3Folder
 
 import cats.implicits._
@@ -45,8 +44,8 @@ object TransformerConfig {
    */
   private val rawCliConfig = RawConfig("", "", "", "", "", "")
 
-  private val parser = new scopt.OptionParser[RawConfig](Temporary.TransformerName) {
-    head(Temporary.TransformerName, ProjectMetadata.version)
+  private val parser = new scopt.OptionParser[RawConfig](ProjectMetadata.name) {
+    head(ProjectMetadata.name, ProjectMetadata.version)
 
     opt[String]('i', "input")
       .required()

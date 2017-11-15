@@ -20,9 +20,9 @@ class LoaderConfigSpec extends Specification { def is = s2"""
 
       "--aws-access-key-id", "AAAA",
       "--aws-secret-access-key", "abcd",
-      "--manifest-table", "strawberry-manifest",
+      "--manifest-table", "snowflake-manifest",
 
-      "--stage-url", "s3://strawberry/output",
+      "--stage-url", "s3://snowflake/output",
       "--stage-name", "some_stage",
 
       "--snowflake-region", "us-west-1",
@@ -36,8 +36,8 @@ class LoaderConfigSpec extends Specification { def is = s2"""
     val expected = LoaderConfig.SetupConfig(
       awsAccessKey = "AAAA",
       awsSecretKey = "abcd",
-      manifestTable = "strawberry-manifest",
-      stageUrl = "s3://strawberry/output/",
+      manifestTable = "snowflake-manifest",
+      stageUrl = "s3://snowflake/output/",
       snowflakeStage = "some_stage",
       snowflakeRegion = "us-west-1",
       snowflakeUser = "anton",
@@ -57,7 +57,7 @@ class LoaderConfigSpec extends Specification { def is = s2"""
       "--aws-access-key-id", "AAAA",
       "--aws-secret-access-key", "abcd",
       "--aws-region", "us-east-1",
-      "--manifest-table", "strawberry-manifest",
+      "--manifest-table", "snowflake-manifest",
 
       "--stage-name", "some_stage",
 
@@ -70,7 +70,7 @@ class LoaderConfigSpec extends Specification { def is = s2"""
       "--db", "test_db").toArray
 
     val expected = LoaderConfig.LoadConfig(
-      "AAAA", "abcd", "us-east-1", "strawberry-manifest",
+      "AAAA", "abcd", "us-east-1", "snowflake-manifest",
       "us-west-1", "some_stage", "anton", "secret", "snowplow", "snowplow_wh", "test_db", "atomic")
 
     LoaderConfig.parse(args) must beSome(Right(expected))
