@@ -8,6 +8,7 @@
 package com.snowplowanalytics.snowflake.loader
 
 import scala.util.control.NonFatal
+
 import java.sql.Connection
 
 import cats.data.{ Validated, ValidatedNel }
@@ -74,22 +75,25 @@ object Loader {
           println(s"Warehouse ${config.snowflakeWarehouse} already resumed")
       }
 
+      // Add each folder in transaction
       state.foldersToLoad.foreach { folder =>
-        addColumns(connection, config.snowflakeSchema, folder)
+        val transactionName = s"snowplow_${folder.folderToLoad.runId}".replaceAll("=", "_").replaceAll("-", "_")
+        Database.startTransaction(connection, Some(transactionName))
         try {
+          addColumns(connection, config.snowflakeSchema, folder)
           loadFolder(connection, config, folder.folderToLoad)
         } catch {
           case NonFatal(e) =>
             val message = if (folder.newColumns.isEmpty)
-              s"Error during ${folder.folderToLoad.runId} load. Details: \n${e.getMessage}\n" +
+              s"Error during ${folder.folderToLoad.runId} load. ${e.getMessage}\n" +
                 s"No new columns were added, safe to rerun."
             else
-              s"Error during ${folder.folderToLoad.runId} load. Details: \n${e.getMessage}\n" +
-                s"Following columns were added during load-preparation and must be dropped to restore state: ${folder.newColumns.mkString(", ")}"
+              s"Error during ${folder.folderToLoad.runId} load. ${e.getMessage}\nTrying to rollback"
             System.err.println(message)
             sys.exit(1)
         }
         ProcessManifest.markLoaded(dynamoDb, config.manifestTable, folder.folderToLoad.runId)
+        Database.commitTransaction(connection)
       }
     }
   }
@@ -188,13 +192,11 @@ object Loader {
           sys.exit(1)
       }
       Database.execute(connection, AlterTable.AddColumn(schemaName, Defaults.Table, columnName, shredType))
+      println(s"New column [$columnName] has been added")
     } catch {
       case e: net.snowflake.client.jdbc.SnowflakeSQLException =>
         System.err.println(e.getMessage)
-        System.err.println("Aborting due invalid manifest state")
-        sys.exit(1)
     }
-    println(s"New column [$columnName] has been added")
   }
 
   /**
@@ -212,11 +214,10 @@ object Loader {
         addShredType(connection, schema, current)
         current :: created
       } catch {
-        case NonFatal(e) =>
-          val message = s"Error during ${folder.folderToLoad.runId} load. Details: \n${e.getMessage}\n" +
-            s"Following columns were added during load-preparation and must be dropped to restore state: ${folder.newColumns.mkString(", ")}"
-          System.err.println(message)
-          sys.exit(1)
+        case e: Throwable =>
+          val message = s"Error during ${folder.folderToLoad.runId} load. Details: ${e.getMessage}\n" +
+            s"Following columns were added during load-preparation and will be automatically dropped during transaction rollback: ${created.mkString(", ")}"
+          throw new RuntimeException(message)
       }
     }
     ()
