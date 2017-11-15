@@ -74,7 +74,10 @@ object Loader {
           println(s"Warehouse ${config.snowflakeWarehouse} already resumed")
       }
 
+      // Add each folder in transaction
       state.foldersToLoad.foreach { folder =>
+        val transactionName = s"snowplow_${folder.folderToLoad.runId}".replaceAll("=", "_").replaceAll("-", "_")
+        Database.startTransaction(connection, Some(transactionName))
         addColumns(connection, config.snowflakeSchema, folder)
         try {
           loadFolder(connection, config, folder.folderToLoad)
@@ -90,6 +93,7 @@ object Loader {
             sys.exit(1)
         }
         ProcessManifest.markLoaded(dynamoDb, config.manifestTable, folder.folderToLoad.runId)
+        Database.commitTransaction(connection)
       }
     }
   }

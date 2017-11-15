@@ -44,6 +44,20 @@ object Database {
     jdbcStatement.close()
   }
 
+  /** Begin transaction */
+  def startTransaction(connection: Connection, name: Option[String]): Unit = {
+    val jdbcStatement = connection.createStatement()
+    jdbcStatement.execute(s"BEGIN TRANSACTION ${name.getOrElse("")}")
+    jdbcStatement.close()
+  }
+
+  /** Commit transaction */
+  def commitTransaction(connection: Connection): Unit = {
+    val jdbcStatement = connection.createStatement()
+    jdbcStatement.execute("COMMIT")
+    jdbcStatement.close()
+  }
+
   /** Execute SQL statement and print status */
   def executeAndOutput[S: Statement](connection: Connection, ast: S): Unit = {
     val statement = connection.createStatement()
