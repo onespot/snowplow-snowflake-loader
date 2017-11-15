@@ -7,7 +7,6 @@
  */
 package com.snowplowanalytics.snowflake.loader
 
-import com.snowplowanalytics.snowflake.core.Temporary
 import com.snowplowanalytics.snowflake.core.Config.S3Folder
 import com.snowplowanalytics.snowflake.generated.ProjectMetadata
 import com.snowplowanalytics.snowflake.loader.ast.Defaults
@@ -143,8 +142,8 @@ object LoaderConfig {
     */
   private val rawCliConfig = RawConfig("", "", "", "", "", "", "", "", "", "", "", "", None, "noop")
 
-  private val parser = new scopt.OptionParser[RawConfig](Temporary.LoaderName + "-" + ProjectMetadata.version + ".jar") {
-    head(Temporary.LoaderName, ProjectMetadata.version)
+  private val parser = new scopt.OptionParser[RawConfig](ProjectMetadata.name + "-" + ProjectMetadata.version + ".jar") {
+    head(ProjectMetadata.name, ProjectMetadata.version)
 
     cmd("setup")
       .action((_, c) => c.copy(command = "setup"))

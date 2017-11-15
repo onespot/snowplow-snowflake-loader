@@ -16,35 +16,35 @@ class TransformerConfigSpec extends Specification { def is = s2"""
 
   def e1 = {
     val args = List(
-      "--input", "s3n://strawberry/archive",
-      "--output", "s3://strawberry-loader/output/",
+      "--input", "s3n://snowflake/archive",
+      "--output", "s3://snowflake-loader/output/",
       "--aws-access-key-id", "AAAA",
       "--aws-secret-access-key", "abcd",
       "--aws-region", "us-east-1",
-      "--manifest-table", "strawberry-manifest").toArray
+      "--manifest-table", "snowflake-manifest").toArray
 
     val expected = TransformerConfig(
-      "s3://strawberry/archive/",
-      "s3://strawberry-loader/output/",
+      "s3://snowflake/archive/",
+      "s3://snowflake-loader/output/",
       "AAAA",
       "abcd",
       "us-east-1",
-      "strawberry-manifest")
+      "snowflake-manifest")
 
     TransformerConfig.parse(args) must beSome(Right(expected))
   }
 
   def e2 = {
     val args = List(
-      "--input", "http://strawberry/archive",
-      "--output", "https://strawberry-loader/output/",
+      "--input", "http://snowflake/archive",
+      "--output", "https://snowflake-loader/output/",
       "--aws-access-key-id", "AAAA",
       "--aws-secret-access-key", "abcd",
       "--aws-region", "us-east-1",
-      "--manifest-table", "strawberry-manifest").toArray
+      "--manifest-table", "snowflake-manifest").toArray
 
-    val expected = "Bucket name [http://strawberry/archive] must start with s3:// prefix, " +
-      "Bucket name [https://strawberry-loader/output/] must start with s3:// prefix"
+    val expected = "Bucket name [http://snowflake/archive] must start with s3:// prefix, " +
+      "Bucket name [https://snowflake-loader/output/] must start with s3:// prefix"
     TransformerConfig.parse(args) must beSome(Left(expected))
   }
 }
