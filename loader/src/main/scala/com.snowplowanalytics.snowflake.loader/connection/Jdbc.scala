@@ -6,15 +6,17 @@
  * Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
  */
 package com.snowplowanalytics.snowflake.loader
+package connection
 
 import ast._
 
-import java.sql.{Connection, DriverManager, SQLException}
+import java.sql.{Connection => JdbcConnection, DriverManager, SQLException}
 import java.util.Properties
 
-object Database {
+object Jdbc extends Connection[JdbcConnection] {
+
   @throws[SQLException]
-  def getConnection(config: LoaderConfig): Connection = {
+  def getConnection(config: LoaderConfig): JdbcConnection = {
     Class.forName("net.snowflake.client.jdbc.SnowflakeDriver")
 
     // US West is default: https://docs.snowflake.net/manuals/user-guide/jdbc-configure.html#jdbc-driver-connection-string
@@ -38,28 +40,34 @@ object Database {
   }
 
   /** Execute SQL statement */
-  def execute[S: Statement](connection: Connection, ast: S): Unit = {
+  def execute[S: Statement](connection: JdbcConnection, ast: S): Unit = {
     val jdbcStatement = connection.createStatement()
     jdbcStatement.execute(ast.getStatement.value)
     jdbcStatement.close()
   }
 
   /** Begin transaction */
-  def startTransaction(connection: Connection, name: Option[String]): Unit = {
+  def startTransaction(connection: JdbcConnection, name: Option[String]): Unit = {
     val jdbcStatement = connection.createStatement()
-    jdbcStatement.execute(s"BEGIN TRANSACTION ${name.getOrElse("")}")
+    jdbcStatement.execute(s"BEGIN TRANSACTION NAME ${name.getOrElse("")}")
     jdbcStatement.close()
   }
 
   /** Commit transaction */
-  def commitTransaction(connection: Connection): Unit = {
+  def commitTransaction(connection: JdbcConnection): Unit = {
     val jdbcStatement = connection.createStatement()
     jdbcStatement.execute("COMMIT")
     jdbcStatement.close()
   }
 
+  def rollbackTransaction(connection: JdbcConnection): Unit = {
+    val jdbcStatement = connection.createStatement()
+    jdbcStatement.execute("ROLLBACK")
+    jdbcStatement.close()
+  }
+
   /** Execute SQL statement and print status */
-  def executeAndOutput[S: Statement](connection: Connection, ast: S): Unit = {
+  def executeAndOutput[S: Statement](connection: JdbcConnection, ast: S): Unit = {
     val statement = connection.createStatement()
     val rs = statement.executeQuery(ast.getStatement.value)
     while (rs.next()) {
@@ -69,7 +77,7 @@ object Database {
   }
 
   /** Execute SQL query and count rows */
-  def executeAndCountRows[S: Statement](connection: Connection, ast: S): Int = {
+  def executeAndCountRows[S: Statement](connection: JdbcConnection, ast: S): Int = {
     val statement = connection.createStatement()
     val rs = statement.executeQuery(ast.getStatement.value)
     var i = 0

@@ -43,7 +43,8 @@ object LoaderConfig {
     snowflakeAccount: String,
     snowflakeWarehouse: String,
     snowflakeDb: String,
-    snowflakeSchema: String
+    snowflakeSchema: String,
+    dryRun: Boolean = false
   ) extends LoaderConfig
 
   /** Configuration for `setup` subcommand */
@@ -87,6 +88,8 @@ object LoaderConfig {
     snowflakeDb: String,
     snowflakeSchema: Option[String],
 
+    dryRun: Boolean,
+
     command: String)
 
   /** Parse and validate Snowflake Loader configuration out of CLI args */
@@ -98,21 +101,24 @@ object LoaderConfig {
     case "setup" =>
       S3Folder.parse(rawConfig.stageUrl) match {
         case Right(stageUrl) =>
-          Right(LoaderConfig.SetupConfig(
-            awsAccessKey = rawConfig.awsAccessKey,
-            awsSecretKey = rawConfig.awsSecretKey,
-            manifestTable = rawConfig.manifestTable,
+          if (rawConfig.dryRun)
+            Left("setup subcommand does not accept --dry-run")
+          else
+            Right(LoaderConfig.SetupConfig(
+              awsAccessKey = rawConfig.awsAccessKey,
+              awsSecretKey = rawConfig.awsSecretKey,
+              manifestTable = rawConfig.manifestTable,
 
-            stageUrl = stageUrl,
+              stageUrl = stageUrl,
 
-            snowflakeRegion = rawConfig.snowflakeRegion,
-            snowflakeStage = rawConfig.snowflakeStage,
-            snowflakeUser = rawConfig.snowflakeUser,
-            snowflakePassword = rawConfig.snowflakePassword,
-            snowflakeAccount = rawConfig.snowflakeAccount,
-            snowflakeWarehouse = rawConfig.snowflakeWarehouse,
-            snowflakeDb = rawConfig.snowflakeDb,
-            snowflakeSchema = rawConfig.snowflakeSchema.getOrElse(Defaults.Schema)))
+              snowflakeRegion = rawConfig.snowflakeRegion,
+              snowflakeStage = rawConfig.snowflakeStage,
+              snowflakeUser = rawConfig.snowflakeUser,
+              snowflakePassword = rawConfig.snowflakePassword,
+              snowflakeAccount = rawConfig.snowflakeAccount,
+              snowflakeWarehouse = rawConfig.snowflakeWarehouse,
+              snowflakeDb = rawConfig.snowflakeDb,
+              snowflakeSchema = rawConfig.snowflakeSchema.getOrElse(Defaults.Schema)))
 
         case Left(e) =>
           Left(s"${rawConfig.stageUrl} is invalid S3 stage. " + e)
@@ -140,7 +146,7 @@ object LoaderConfig {
   /**
     * Starting raw value, required by `parser`
     */
-  private val rawCliConfig = RawConfig("", "", "", "", "", "", "", "", "", "", "", "", None, "noop")
+  private val rawCliConfig = RawConfig("", "", "", "", "", "", "", "", "", "", "", "", None, false, "noop")
 
   private val parser = new scopt.OptionParser[RawConfig](ProjectMetadata.name + "-" + ProjectMetadata.version + ".jar") {
     head(ProjectMetadata.name, ProjectMetadata.version)
@@ -291,10 +297,14 @@ object LoaderConfig {
           .action((x, c) => c.copy(snowflakeDb = x))
           .text("Database name"),
 
-          opt[String]("schema")
+        opt[String]("schema")
           .valueName("<value>")
           .action((x, c) => c.copy(snowflakeSchema = Some(x)))
-          .text("Database Schema name")
+          .text("Database Schema name"),
+
+        opt[Unit]("dry-run")
+          .action((_, c) => c.copy(dryRun = true))
+          .text("Do not perform database actions")
       )
 
     help("help").text("prints this usage text")

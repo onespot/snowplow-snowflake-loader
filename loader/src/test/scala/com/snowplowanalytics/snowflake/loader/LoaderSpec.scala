@@ -8,11 +8,11 @@
 package com.snowplowanalytics.snowflake.loader
 
 import org.specs2.Specification
-
 import org.joda.time.DateTime
-
-import ast.{ SnowflakeDatatype, Insert, Select }
-import com.snowplowanalytics.snowflake.core.RunId
+import ast.{Insert, Select, SnowflakeDatatype}
+import com.snowplowanalytics.snowflake.loader.connection.DryRun
+import com.snowplowanalytics.snowflake.core.{ProcessManifest, RunId}
+import com.snowplowanalytics.snowflake.loader
 
 class LoaderSpec extends Specification { def is = s2"""
   Parse context column name as ARRAY type $e1
@@ -20,6 +20,7 @@ class LoaderSpec extends Specification { def is = s2"""
   Fail to parse invalid column name $e3
   Fail with exception to get list of columns $e4
   Build valid INSERT statement $e5
+  Look at output $e6
   """
 
   def e1 = {
@@ -107,5 +108,47 @@ class LoaderSpec extends Specification { def is = s2"""
           .and(sSchemaResult).and(sTableResult).and(sColumnsAmount)
           .and(exactColumns).and(sExactColumns)
     }
+  }
+
+  def e6 = {
+    val connection = new DryRun()
+    val config = LoaderConfig.LoadConfig("access", "secret", "us-east-1", "manifest", "eu-central-1", "stageName", "user", "pass", "snowplow-acc", "wh", "db", "atomic", false)
+    Loader.exec(DryRun, connection, new loader.LoaderSpec.ProcessingManifestTest, config)
+    val expected = List(
+      "SHOW schemas LIKE 'atomic'",
+      "SHOW stages LIKE 'stageName' IN atomic",
+      "SHOW tables LIKE 'events' IN atomic",
+      "SHOW file formats LIKE 'snowplow_enriched_json' IN atomic",
+      "SHOW warehouses LIKE 'wh'",
+      "USE WAREHOUSE wh",
+      "ALTER WAREHOUSE wh RESUME",
+      "INFO: New transaction snowplow_run_2017_12_10_14_30_35 started",
+      "ALTER TABLE atomic.events ADD COLUMN contexts_com_acme_something_1 ARRAY",
+      "CREATE TEMPORARY TABLE IF NOT EXISTS atomic.snowplow_tmp_run_2017_12_10_14_30_35 (\n  enriched_data OBJECT NOT NULL\n)",
+      // INSERT INTO
+      "INFO: Transaction [snowplow_run_2017_12_10_14_30_35] successfully closed"
+    )
+    val result = connection.getResult
+    result must containAllOf(expected).inOrder
+  }
+}
+
+object LoaderSpec {
+  class ProcessingManifestTest extends ProcessManifest.Loader {
+    private val loaded = collection.mutable.ListBuffer.newBuilder[(String, String)]
+
+    def markLoaded(tableName: String, runid: String): Unit = {
+      loaded += ((tableName, runid))
+    }
+
+    override def scan(tableName: String): Either[String, List[RunId]] = Right(
+      List(
+        RunId.ProcessedRunId(
+          "enriched/good/run=2017-12-10-14-30-35",
+          DateTime.parse("2017-12-10T01:20+02:00"),
+          DateTime.parse("2017-12-10T01:20+02:00"),
+          List("contexts_com_acme_something_1"),
+          "s3://archive/run=2017-12-10-14-30-35/", "0.2.0", false))
+    )
   }
 }
