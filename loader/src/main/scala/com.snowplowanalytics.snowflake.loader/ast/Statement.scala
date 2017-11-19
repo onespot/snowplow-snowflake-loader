@@ -19,15 +19,14 @@ object Statement {
 
   implicit object CreateTableStatement extends Statement[CreateTable] {
     def getStatement(ddl: CreateTable): SqlStatement = {
-      val longest = ddl.columns.map(_.name.length).maximumOption.getOrElse(1)
-      val constraint = ddl.primaryKey.map { p => ",\n\n  " + p.show }.getOrElse("")
+      val constraint = ddl.primaryKey.map { p => ", " + p.show }.getOrElse("")
       val cols = ddl.columns.map(_.show).map(_.split(" ").toList).map {
-        case columnName :: tail => columnName + " " * (longest + 1 - columnName.length) + tail.mkString(" ")
+        case columnName :: tail => columnName + " " + tail.mkString(" ")
         case other => other.mkString(" ")
       }
       val temporary = if (ddl.temporary) " TEMPORARY " else " "
-      SqlStatement(s"CREATE${temporary}TABLE IF NOT EXISTS ${ddl.schema}.${ddl.name} (\n" +
-        cols.map("  " + _).mkString(",\n") + constraint + "\n)"
+      SqlStatement(s"CREATE${temporary}TABLE IF NOT EXISTS ${ddl.schema}.${ddl.name} (" +
+        cols.mkString(", ") + constraint + ")"
       )
     }
   }
@@ -104,38 +103,38 @@ object Statement {
   implicit object ShowStageStatement extends Statement[Show.ShowStages] {
     def getStatement(ast: Show.ShowStages): SqlStatement = {
       val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
-      val scopePattern = ast.schema.map(s => s"IN $s").getOrElse("")
-      SqlStatement(s"SHOW stages $schemaPattern$scopePattern")
+      val scopePattern = ast.schema.map(s => s" IN $s").getOrElse("")
+      SqlStatement(s"SHOW stages$schemaPattern$scopePattern")
     }
   }
 
   implicit object ShowSchemasStatement extends Statement[Show.ShowSchemas] {
     def getStatement(ast: Show.ShowSchemas): SqlStatement = {
       val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
-      SqlStatement(s"SHOW schemas $schemaPattern")
+      SqlStatement(s"SHOW schemas$schemaPattern")
     }
   }
 
   implicit object ShowTablesStatement extends Statement[Show.ShowTables] {
     def getStatement(ast: Show.ShowTables): SqlStatement = {
       val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
-      val scopePattern = ast.schema.map(s => s"IN $s").getOrElse("")
-      SqlStatement(s"SHOW tables $schemaPattern$scopePattern")
+      val scopePattern = ast.schema.map(s => s" IN $s").getOrElse("")
+      SqlStatement(s"SHOW tables$schemaPattern$scopePattern")
     }
   }
 
   implicit object ShowFileFormatsStatement extends Statement[Show.ShowFileFormats] {
     def getStatement(ast: Show.ShowFileFormats): SqlStatement = {
       val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
-      val scopePattern = ast.schema.map(s => s"IN $s").getOrElse("")
-      SqlStatement(s"SHOW file formats $schemaPattern$scopePattern")
+      val scopePattern = ast.schema.map(s => s" IN $s").getOrElse("")
+      SqlStatement(s"SHOW file formats$schemaPattern$scopePattern")
     }
   }
 
   implicit object ShowWarehousesStatement extends Statement[Show.ShowWarehouses] {
     def getStatement(ast: Show.ShowWarehouses): SqlStatement = {
       val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
-      SqlStatement(s"SHOW warehouses $schemaPattern")
+      SqlStatement(s"SHOW warehouses$schemaPattern")
     }
   }
 }

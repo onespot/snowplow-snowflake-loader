@@ -20,10 +20,14 @@ class AtomicDefSpec  extends Specification { def is = s2"""
   def e1 = {
     val referenceStream = getClass.getResourceAsStream("/sql/atomic-def.sql")
     val expectedLines = Source.fromInputStream(referenceStream).getLines().toList
-    val expected = normalizeSql(expectedLines)
+    val expected = List(normalizeSql(expectedLines).mkString(""))
 
     val resultLines = AtomicDef.getTable().getStatement.value.split("\n").toList
     val result = normalizeSql(resultLines)
+
+    println(result.mkString("\n"))
+    println("\n\n\n\n")
+    println(expected.mkString("\n"))
 
     result must beEqualTo(expected)
   }
@@ -37,5 +41,4 @@ object AtomicDefSpec {
     .filterNot(_.isEmpty)
     .map(_.replaceAll("""\s+""", " "))
     .map(_.replaceAll(""",\s""", ","))
-
 }

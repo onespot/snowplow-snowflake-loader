@@ -8,11 +8,14 @@
 package com.snowplowanalytics.snowflake.loader
 
 import org.specs2.Specification
-
 import org.joda.time.DateTime
 
-import ast.{ SnowflakeDatatype, Insert, Select }
-import com.snowplowanalytics.snowflake.core.RunId
+import ast.{Insert, Select, SnowflakeDatatype, Statement}
+
+import com.snowplowanalytics.snowflake.loader
+import com.snowplowanalytics.snowflake.loader.ast._
+import com.snowplowanalytics.snowflake.loader.connection.Connection
+import com.snowplowanalytics.snowflake.core.{Config, ProcessManifest, RunId}
 
 class LoaderSpec extends Specification { def is = s2"""
   Parse context column name as ARRAY type $e1
@@ -20,6 +23,7 @@ class LoaderSpec extends Specification { def is = s2"""
   Fail to parse invalid column name $e3
   Fail with exception to get list of columns $e4
   Build valid INSERT statement $e5
+  Look at output $e6
   """
 
   def e1 = {
@@ -107,5 +111,117 @@ class LoaderSpec extends Specification { def is = s2"""
           .and(sSchemaResult).and(sTableResult).and(sColumnsAmount)
           .and(exactColumns).and(sExactColumns)
     }
+  }
+
+  def e6 = {
+    val connection = new LoaderSpec.Mock()
+    val config = Config(Some("access"), Some("secret"), "us-east-1", "manifest", "eu-central-1", "archive-stage", "s3://archive", "s3://enriched-input", "user", "pass", "snowplow-acc", "wh", "db", "atomic")
+    Loader.exec(LoaderSpec.Mock, connection, new loader.LoaderSpec.ProcessingManifestTest, config)
+    val expected = List(
+      "SHOW schemas LIKE 'atomic'",
+      "SHOW stages LIKE 'stageName' IN atomic",
+      "SHOW tables LIKE 'events' IN atomic",
+      "SHOW file formats LIKE 'snowplow_enriched_json' IN atomic",
+      "SHOW warehouses LIKE 'wh'",
+      "USE WAREHOUSE wh",
+      "ALTER WAREHOUSE wh RESUME",
+      "New transaction snowplow_run_2017_12_10_14_30_35 started",
+      "ALTER TABLE atomic.events ADD COLUMN contexts_com_acme_something_1 ARRAY",
+      "CREATE TEMPORARY TABLE IF NOT EXISTS atomic.snowplow_tmp_run_2017_12_10_14_30_35 (enriched_data OBJECT NOT NULL)",
+      // INSERT INTO
+      "Transaction [snowplow_run_2017_12_10_14_30_35] successfully closed"
+    )
+    val result = connection.getResult
+    result must containAllOf(expected).inOrder
+  }
+}
+
+object LoaderSpec {
+
+  class Mock {
+    private val messages = collection.mutable.ListBuffer.newBuilder[String]
+
+    private var transaction: Option[String] = None
+    private var transactionNum = 0
+
+    def log(message: String): Unit = {
+      messages += message
+    }
+
+    def startTransaction(name: Option[String]): Unit =
+      transaction match {
+        case Some(current) =>
+          log(s"Invalid state: new transaction started until current [$current] not commited")
+        case None =>
+          log(s"New transaction ${name.getOrElse(" ")} started")
+          transactionNum += 1
+          val transactionName = name.getOrElse(transactionNum.toString)
+          transaction = Some(name.getOrElse(transactionName))
+      }
+
+    def commitTransaction(): Unit =
+      transaction match {
+        case Some(current) =>
+          log(s"Transaction [$current] successfully closed")
+        case None =>
+          log("Invalid state: trying to close non-existent transaction")
+      }
+
+    def rollbackTransaction(): Unit =
+      transaction match {
+        case Some(current) =>
+          log(s"Transaction [$current] cancelled")
+        case None =>
+          log("Invalid state: trying to rollback non-existent transaction")
+      }
+
+    def getResult: List[String] =
+      messages.result().toList
+  }
+
+  object Mock extends Connection[Mock] {
+    def getConnection(config: Config): Mock = {
+      val logConnection = new Mock
+      logConnection.log(s"Connected to ${config.database} database")
+      logConnection
+    }
+
+    def execute[S: Statement](connection: Mock, ast: S): Unit =
+      connection.log(ast.getStatement.value)
+
+    def startTransaction(connection: Mock, name: Option[String]): Unit =
+      connection.startTransaction(name)
+
+    def commitTransaction(connection: Mock): Unit =
+      connection.commitTransaction()
+
+    def executeAndOutput[S: Statement](connection: Mock, ast: S): Unit =
+      connection.log(ast.getStatement.value)
+
+    def rollbackTransaction(connection: Mock): Unit =
+      connection.rollbackTransaction()
+
+    def executeAndCountRows[S: Statement](connection: Mock, ast: S): Int = {
+      connection.log(ast.getStatement.value)
+      1 // Used for preliminary checks
+    }
+  }
+
+  class ProcessingManifestTest extends ProcessManifest.Loader {
+    private val loaded = collection.mutable.ListBuffer.newBuilder[(String, String)]
+
+    def markLoaded(tableName: String, runid: String): Unit = {
+      loaded += ((tableName, runid))
+    }
+
+    override def scan(tableName: String): Either[String, List[RunId]] = Right(
+      List(
+        RunId.ProcessedRunId(
+          "enriched/good/run=2017-12-10-14-30-35",
+          DateTime.parse("2017-12-10T01:20+02:00"),
+          DateTime.parse("2017-12-10T01:20+02:00"),
+          List("contexts_com_acme_something_1"),
+          "s3://archive/run=2017-12-10-14-30-35/", "0.2.0", false))
+    )
   }
 }

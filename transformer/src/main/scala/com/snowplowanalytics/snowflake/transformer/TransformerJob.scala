@@ -9,19 +9,17 @@ package com.snowplowanalytics.snowflake.transformer
 
 import org.apache.spark.SparkContext
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
-
 import com.snowplowanalytics.snowflake.core.ProcessManifest
 
 object TransformerJob {
 
   /** Process all directories, saving state into DynamoDB */
-  def run(sc: SparkContext, dynamoDB: AmazonDynamoDB, tableName: String, jobConfigs: List[TransformerJobConfig]): Unit = {
+  def run(sc: SparkContext, manifest: ProcessManifest, tableName: String, jobConfigs: List[TransformerJobConfig]): Unit = {
     jobConfigs.foreach { jobConfig =>
       println(s"Snowflake Transformer: processing ${jobConfig.runId}. ${System.currentTimeMillis()}")
-      ProcessManifest.add(dynamoDB, tableName, jobConfig.runId)
+      manifest.add(tableName, jobConfig.runId)
       val shredTypes = process(sc, jobConfig)
-      ProcessManifest.markProcessed(dynamoDB, tableName, jobConfig.runId, shredTypes, jobConfig.output)
+      manifest.markProcessed(tableName, jobConfig.runId, shredTypes, jobConfig.output)
       println(s"Snowflake Transformer: processed ${jobConfig.runId}. ${System.currentTimeMillis()}")
     }
   }
