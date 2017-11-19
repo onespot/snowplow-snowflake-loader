@@ -13,6 +13,7 @@ class StatementSpec extends Specification { def is = s2"""
   Transform CREATE TABLE AST into String $e1
   Transform COPY INTO AST into String $e2
   Transform INSERT INTO AST into String $e3
+  Transform SHOW into String $e4
   """
 
   def e1 = {
@@ -68,6 +69,12 @@ class StatementSpec extends Specification { def is = s2"""
       "FROM some_schema.tmp_table"
 
     result must beEqualTo(expected)
+  }
 
+  def e4 = {
+    val ast = Show.ShowStages(Some("s3://archive"), Some("atomic"))
+    val result = ast.getStatement.value
+    val expected = "SHOW stages LIKE 's3://archive' IN atomic"
+    result must beEqualTo(expected)
   }
 }
