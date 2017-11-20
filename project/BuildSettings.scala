@@ -22,7 +22,7 @@ object BuildSettings {
 
   lazy val buildSettings = Seq[Setting[_]](
     name := "snowplow-snowflake-loader",
-    version := "0.3.0-rc3",
+    version := "0.3.0-rc5",
     organization := "com.snowplowanalytics",
     scalaVersion := "2.11.11",
     resolvers ++= Seq(
