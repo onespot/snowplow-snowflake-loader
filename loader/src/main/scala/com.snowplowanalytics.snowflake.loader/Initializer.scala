@@ -8,21 +8,22 @@
 package com.snowplowanalytics.snowflake.loader
 
 import ast._
+import com.snowplowanalytics.snowflake.core.Config
 import connection.Jdbc
 
 /** Module containing functions to setup Snowflake table for Enriched events */
 object Initializer {
 
   /** Run setup process */
-  def run(config: LoaderConfig.SetupConfig): Unit = {
+  def run(config: Config): Unit = {
     val connection = Jdbc.getConnection(config)
 
-    Jdbc.executeAndOutput(connection, CreateSchema(config.snowflakeSchema))
-    Jdbc.executeAndOutput(connection, AtomicDef.getTable(config.snowflakeSchema))
-    Jdbc.executeAndOutput(connection, CreateWarehouse(config.snowflakeWarehouse, size = Some(CreateWarehouse.XSmall)))
+    Jdbc.executeAndOutput(connection, CreateSchema(config.schema))
+    Jdbc.executeAndOutput(connection, AtomicDef.getTable(config.schema))
+    Jdbc.executeAndOutput(connection, CreateWarehouse(config.warehouse, size = Some(CreateWarehouse.XSmall)))
     Jdbc.executeAndOutput(connection, CreateFileFormat.CreateJsonFormat(Defaults.FileFormat))
     Jdbc.executeAndOutput(connection, CreateStage(
-      config.snowflakeStage, config.stageUrl, Defaults.FileFormat, config.snowflakeSchema))
+      config.stage, config.stageUrl, Defaults.FileFormat, config.schema))
 
     connection.close()
   }

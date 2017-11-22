@@ -8,16 +8,16 @@
 package com.snowplowanalytics.snowflake.transformer
 
 import org.apache.spark.{SparkConf, SparkContext}
-import com.snowplowanalytics.snowflake.core.ProcessManifest
+import com.snowplowanalytics.snowflake.core.{ ProcessManifest, Config }
 
 
 object Main {
   def main(args: Array[String]): Unit = {
-    TransformerConfig.parse(args) match {
-      case Some(Right(appConfig)) =>
+    Config.parseTransformerCli(args) match {
+      case Some(Right(Config.CliTransformerConfiguration(appConfig))) =>
 
-        val s3 = ProcessManifest.getS3(appConfig.awsAccessKey, appConfig.awsSecretKey, appConfig.awsRegion)
-        val dynamoDb = ProcessManifest.getDynamoDb(appConfig.awsAccessKey, appConfig.awsSecretKey, appConfig.awsRegion)
+        val s3 = ProcessManifest.getS3(appConfig.accessKeyId, appConfig.secretAccessKey, appConfig.awsRegion)
+        val dynamoDb = ProcessManifest.getDynamoDb(appConfig.accessKeyId, appConfig.secretAccessKey, appConfig.awsRegion)
         val manifest = ProcessManifest.AwsProcessingManifest(s3, dynamoDb)
 
         // Eager SparkContext initializing to avoid YARN timeout
@@ -27,12 +27,12 @@ object Main {
         val sc = new SparkContext(config)
 
         // Get run folders that are not in RunManifest in any form
-        val runFolders = manifest.getUnprocessed(appConfig.manifestTable, appConfig.enrichedInput)
+        val runFolders = manifest.getUnprocessed(appConfig.manifest, appConfig.input)
 
         runFolders match {
           case Right(folders) =>
-            val configs = folders.map(TransformerJobConfig(appConfig.enrichedInput, appConfig.enrichedOutput, _))
-            TransformerJob.run(sc, manifest, appConfig.manifestTable, configs)
+            val configs = folders.map(TransformerJobConfig(appConfig.input, appConfig.stageUrl, _))
+            TransformerJob.run(sc, manifest, appConfig.manifest, configs)
           case Left(error) =>
             println("Cannot get list of unprocessed folders")
             println(error)

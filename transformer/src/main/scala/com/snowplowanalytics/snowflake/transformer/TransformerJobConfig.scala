@@ -7,16 +7,16 @@
  */
 package com.snowplowanalytics.snowflake.transformer
 
-import com.snowplowanalytics.snowflake.core.Config.{ S3Folder, splitS3Folder }
+import com.snowplowanalytics.snowflake.core.Config._
 
 case class TransformerJobConfig(enrichedArchive: S3Folder, snowflakeOutput: S3Folder, runId: String) {
   def input: String = {
-    val (enrichedBucket, enrichedPath) = splitS3Folder(enrichedArchive)
+    val (enrichedBucket, enrichedPath) = enrichedArchive.splitS3Folder
     s"s3a://$enrichedBucket/$enrichedPath$runIdFolder/part-*"
   }
 
   def output: String = {
-    val (bucket, path) = splitS3Folder(snowflakeOutput)
+    val (bucket, path) = snowflakeOutput.splitS3Folder
     s"s3a://$bucket/$path$runIdFolder"
   }
 

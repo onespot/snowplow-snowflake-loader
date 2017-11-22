@@ -9,11 +9,12 @@ package com.snowplowanalytics.snowflake.loader
 package connection
 
 import ast._
+import com.snowplowanalytics.snowflake.core.Config
 
 // TODO: rewrite as type-class
 /** DB-connection adapter */
 trait Connection[C] {
-  def getConnection(config: LoaderConfig): C
+  def getConnection(config: Config): C
   def execute[S: Statement](connection: C, ast: S): Unit
   def startTransaction(connection: C, name: Option[String]): Unit
   def commitTransaction(connection: C): Unit

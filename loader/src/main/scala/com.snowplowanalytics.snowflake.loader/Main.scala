@@ -7,15 +7,17 @@
  */
 package com.snowplowanalytics.snowflake.loader
 
+import  com.snowplowanalytics.snowflake.core.Config
+
 object Main {
   def main(args: Array[String]): Unit = {
-    LoaderConfig.parse(args) match {
-      case Some(Right(config: LoaderConfig.LoadConfig)) =>
+    Config.parseLoaderCli(args) match {
+      case Some(Right(config @ Config.CliLoaderConfiguration(Config.LoadCommand, _, _))) =>
         println("Loading...")
         Loader.run(config)
-      case Some(Right(config: LoaderConfig.SetupConfig)) =>
+      case Some(Right(config @ Config.CliLoaderConfiguration(Config.SetupCommand, _, _))) =>
         println("Setting up...")
-        Initializer.run(config)
+        Initializer.run(config.loaderConfig)
       case Some(Left(error)) =>
         println(error)
         sys.exit(1)

@@ -16,7 +16,6 @@ import cats.implicits._
 import ast._
 import core._
 import connection._
-import LoaderConfig.LoadConfig
 import ProcessManifest._
 import loader.connection.Connection
 
@@ -43,15 +42,15 @@ object Loader {
     (schema, stage, table, fileFormat, warehouse).map5 { (_: Unit, _: Unit, _: Unit, _: Unit, _: Unit) => () }
   }
 
-  def exec[C](db: Connection[C], connection: C, manifest: ProcessManifest.Loader, config: LoadConfig): Unit = {
-    val state = manifest.scan(config.manifestTable).map(SnowflakeState.getState) match {
+  def exec[C](db: Connection[C], connection: C, manifest: ProcessManifest.Loader, config: Config): Unit = {
+    val state = manifest.scan(config.manifest).map(SnowflakeState.getState) match {
       case Right(s) => s
       case Left(error) =>
         System.err.println(error)
         sys.exit(1)
     }
 
-    preliminaryChecks(db, connection, config.snowflakeSchema, config.snowflakeStage, config.snowflakeWarehouse) match {
+    preliminaryChecks(db, connection, config.schema, config.stage, config.warehouse) match {
       case Validated.Valid(()) => println("Preliminary checks passed")
       case Validated.Invalid(errors) =>
         val message = s"Preliminary checks failed. ${errors.toList.mkString(", ")}"
@@ -63,13 +62,13 @@ object Loader {
       println("Nothing to load, exiting...")
       sys.exit(0)
     } else {
-      db.execute(connection, UseWarehouse(config.snowflakeWarehouse))
+      db.execute(connection, UseWarehouse(config.warehouse))
       try {
-        db.execute(connection, AlterWarehouse.Resume(config.snowflakeWarehouse))
-        println(s"Warehouse ${config.snowflakeWarehouse} resumed")
+        db.execute(connection, AlterWarehouse.Resume(config.warehouse))
+        println(s"Warehouse ${config.warehouse} resumed")
       } catch {
         case _: net.snowflake.client.jdbc.SnowflakeSQLException =>
-          println(s"Warehouse ${config.snowflakeWarehouse} already resumed")
+          println(s"Warehouse ${config.warehouse} already resumed")
       }
 
       // Add each folder in transaction
@@ -77,7 +76,7 @@ object Loader {
         val transactionName = s"snowplow_${folder.folderToLoad.runIdFolder}".replaceAll("=", "_").replaceAll("-", "_")
         db.startTransaction(connection, Some(transactionName))
         try {
-          addColumns(db, connection, config.snowflakeSchema, folder)
+          addColumns(db, connection, config.schema, folder)
           loadFolder(db, connection, config, folder.folderToLoad)
         } catch {
           case e: Throwable =>
@@ -91,33 +90,33 @@ object Loader {
             println("Failure, exiting...")
             sys.exit(1)
         }
-        manifest.markLoaded(config.manifestTable, folder.folderToLoad.runId)
+        manifest.markLoaded(config.manifest, folder.folderToLoad.runId)
         db.commitTransaction(connection)
       }
     }
   }
 
   /** Scan state from processing manifest, extract not-loaded folders and lot each of them */
-  def run(config: LoaderConfig.LoadConfig): Unit = {
+  def run(config: Config.CliLoaderConfiguration): Unit = {
     if (config.dryRun) {
-      val dynamoDb = ProcessManifest.getDynamoDb(config.awsAccessKey, config.awsSecretKey, config.awsRegion)
-      exec(DryRun, new DryRun(), DryRunProcessingManifest(dynamoDb), config)
+      val dynamoDb = ProcessManifest.getDynamoDb(config.loaderConfig.accessKeyId, config.loaderConfig.secretAccessKey, config.loaderConfig.awsRegion)
+      exec(DryRun, new DryRun(), DryRunProcessingManifest(dynamoDb), config.loaderConfig)
     } else {
-      val dynamoDb = ProcessManifest.getDynamoDb(config.awsAccessKey, config.awsSecretKey, config.awsRegion)
+      val dynamoDb = ProcessManifest.getDynamoDb(config.loaderConfig.accessKeyId, config.loaderConfig.secretAccessKey, config.loaderConfig.awsRegion)
       val manifest = AwsLoaderProcessingManifest(dynamoDb)
-      val connection = Jdbc.getConnection(config)
-      exec(Jdbc, connection, manifest, config)
+      val connection = Jdbc.getConnection(config.loaderConfig)
+      exec(Jdbc, connection, manifest, config.loaderConfig)
     }
     println("Success. Exiting...")
   }
 
   /** Create INSERT statement to load Processed Run Id */
-  def getInsertStatement(config: LoadConfig, folder: RunId.ProcessedRunId): Insert = {
+  def getInsertStatement(config: Config, folder: RunId.ProcessedRunId): Insert = {
     val tableColumns = getColumns(folder.shredTypes)
     val castedColumns = tableColumns.map { case (name, dataType) => Select.CastedColumn(Defaults.TempTableColumn, name, dataType) }
-    val tempTable = getTempTable(folder.runIdFolder, config.snowflakeSchema)
+    val tempTable = getTempTable(folder.runIdFolder, config.schema)
     val source = Select(castedColumns, tempTable.schema, tempTable.name)
-    Insert.InsertQuery(config.snowflakeSchema, Defaults.Table, tableColumns.map(_._1), source)
+    Insert.InsertQuery(config.schema, Defaults.Table, tableColumns.map(_._1), source)
   }
 
   /**
@@ -153,14 +152,14 @@ object Loader {
     * @param tempTableCreateStatement SQL statement AST
     * @param runId directory in stage, where files reside
     */
-  def loadTempTable[C](db: Connection[C], connection: C, config: LoadConfig, tempTableCreateStatement: CreateTable, runId: String): Unit = {
+  def loadTempTable[C](db: Connection[C], connection: C, config: Config, tempTableCreateStatement: CreateTable, runId: String): Unit = {
     val tempTableCopyStatement = CopyInto(
       tempTableCreateStatement.schema,
       tempTableCreateStatement.name,
       List(Defaults.TempTableColumn),
-      CopyInto.From(config.snowflakeSchema, config.snowflakeStage, runId),
-      CopyInto.AwsCreds(config.awsAccessKey, config.awsSecretKey),
-      CopyInto.FileFormat(config.snowflakeSchema, Defaults.FileFormat))
+      CopyInto.From(config.schema, config.stage, runId),
+      CopyInto.AwsCreds(config.accessKeyId, config.secretAccessKey),
+      CopyInto.FileFormat(config.schema, Defaults.FileFormat))
 
     db.execute(connection, tempTableCreateStatement)
     db.execute(connection, tempTableCopyStatement)
@@ -185,14 +184,14 @@ object Loader {
     * @param config load configuration
     * @param folder run id, extracted from manifest; processed, but not yet loaded
     */
-  private def loadFolder[C](db: Connection[C], connection: C, config: LoadConfig, folder: RunId.ProcessedRunId): Unit = {
+  private def loadFolder[C](db: Connection[C], connection: C, config: Config, folder: RunId.ProcessedRunId): Unit = {
     val runId = folder.runIdFolder
-    val tempTable = getTempTable(runId, config.snowflakeSchema)
+    val tempTable = getTempTable(runId, config.schema)
     loadTempTable(db, connection, config, tempTable, runId)
 
     val loadStatement = getInsertStatement(config, folder)
     db.execute(connection, loadStatement)
-    println(s"Folder [$runId] from stage [${config.snowflakeStage}] has been loaded")
+    println(s"Folder [$runId] from stage [${config.stage}] has been loaded")
   }
 
   /** Add new column with VARIANT type to events table */

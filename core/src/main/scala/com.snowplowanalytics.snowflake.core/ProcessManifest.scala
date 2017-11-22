@@ -15,7 +15,7 @@ import scala.collection.convert.decorateAsJava._
 import scala.collection.convert.decorateAsScala._
 import scala.util.control.NonFatal
 
-import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
+import com.amazonaws.auth.{AWSCredentials, AWSStaticCredentialsProvider, BasicAWSCredentials, DefaultAWSCredentialsProviderChain}
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDB, AmazonDynamoDBClientBuilder}
 import com.amazonaws.services.dynamodbv2.model._
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
@@ -23,6 +23,7 @@ import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import org.joda.time.{DateTime, DateTimeZone}
 
 import com.snowplowanalytics.snowplow.analytics.scalasdk.RunManifests
+import com.snowplowanalytics.snowflake.core.Config.S3Folder
 import com.snowplowanalytics.snowflake.generated.ProjectMetadata
 
 /**
@@ -36,7 +37,7 @@ trait ProcessManifest extends Product with Serializable {
   // Transformer-specific functions
   def add(tableName: String, runId: String): Unit
   def markProcessed(tableName: String, runId: String, shredTypes: List[String], outputPath: String): Unit
-  def getUnprocessed(manifestTable: String, enrichedInput: String): Either[String, List[String]]
+  def getUnprocessed(manifestTable: String, enrichedInput: S3Folder): Either[String, List[String]]
 }
 
 /**
@@ -168,8 +169,8 @@ object ProcessManifest {
     def contains(state: List[RunId], folder: String): Boolean =
       state.map(folder => folder.runId).contains(folder)
 
-    def getUnprocessed(manifestTable: String, enrichedInput: String): Either[String, List[String]] = {
-      val allRuns = RunManifests.listRunIds(s3Client, enrichedInput)
+    def getUnprocessed(manifestTable: String, enrichedInput: S3Folder): Either[String, List[String]] = {
+      val allRuns = RunManifests.listRunIds(s3Client, enrichedInput.path)
 
       scan(manifestTable) match {
         case Right(state) => Right(allRuns.filterNot(run => contains(state, run)))

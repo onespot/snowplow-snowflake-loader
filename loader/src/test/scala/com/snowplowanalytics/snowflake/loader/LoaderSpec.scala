@@ -12,10 +12,11 @@ import org.joda.time.DateTime
 
 import ast.{Insert, Select, SnowflakeDatatype, Statement}
 
+import com.snowplowanalytics.snowflake.core.Config.S3Folder.{coerce => s3}
 import com.snowplowanalytics.snowflake.loader
 import com.snowplowanalytics.snowflake.loader.ast._
 import com.snowplowanalytics.snowflake.loader.connection.Connection
-import com.snowplowanalytics.snowflake.core.{Config, ProcessManifest, RunId}
+import com.snowplowanalytics.snowflake.core.{ProcessManifest, RunId, Config}
 
 class LoaderSpec extends Specification { def is = s2"""
   Parse context column name as ARRAY type $e1
@@ -56,19 +57,21 @@ class LoaderSpec extends Specification { def is = s2"""
   }
 
   def e5 = {
-    val config = LoaderConfig.LoadConfig(
-      awsAccessKey = "accessKey",
-      awsSecretKey = "secretKey",
+    val config = Config(
+      accessKeyId = "accessKey",
+      secretAccessKey = "secretKey",
       awsRegion = "awsRegion",
-      manifestTable = "snoflake-manifest",
+      manifest = "snoflake-manifest",
       snowflakeRegion = "ue-east-1",
-      snowflakeStage = "snowplow-stage",
-      snowflakeUser = "snowfplow-loader",
-      snowflakePassword = "super-secret",
-      snowflakeAccount = "snowplow-account",
-      snowflakeWarehouse = "snowplow_wa",
-      snowflakeDb = "database",
-      snowflakeSchema = "not_an_atomic")
+      stage = "snowplow-stage",
+      stageUrl = Config.S3Folder.coerce("s3://somestage/foo"),
+      username = "snowfplow-loader",
+      password = "super-secret",
+      input = Config.S3Folder.coerce("s3://snowflake/input/"),
+      account = "snowplow-account",
+      warehouse = "snowplow_wa",
+      database = "database",
+      schema = "not_an_atomic")
 
     val runId = RunId.ProcessedRunId(
       "archive/enriched/run=2017-10-09-17-40-30/",
@@ -78,7 +81,7 @@ class LoaderSpec extends Specification { def is = s2"""
         "contexts_com_snowplowanalytics_snowplow_web_page_1",
         "contexts_com_snowplowanalytics_snowplow_web_page_2",
         "unstruct_event_com_snowplowanalytics_snowplow_link_click_1"),
-      "s3://acme-snowplow/snowflake/run=2017-10-09-17-40-30/",
+      s3("s3://acme-snowplow/snowflake/run=2017-10-09-17-40-30/"),
       "some-script",
       false)
 
@@ -119,7 +122,7 @@ class LoaderSpec extends Specification { def is = s2"""
     Loader.exec(LoaderSpec.Mock, connection, new loader.LoaderSpec.ProcessingManifestTest, config)
     val expected = List(
       "SHOW schemas LIKE 'atomic'",
-      "SHOW stages LIKE 'stageName' IN atomic",
+      "SHOW stages LIKE 'archive-stage' IN atomic",
       "SHOW tables LIKE 'events' IN atomic",
       "SHOW file formats LIKE 'snowplow_enriched_json' IN atomic",
       "SHOW warehouses LIKE 'wh'",
@@ -221,7 +224,7 @@ object LoaderSpec {
           DateTime.parse("2017-12-10T01:20+02:00"),
           DateTime.parse("2017-12-10T01:20+02:00"),
           List("contexts_com_acme_something_1"),
-          "s3://archive/run=2017-12-10-14-30-35/", "0.2.0", false))
+          s3("s3://archive/run=2017-12-10-14-30-35/)", "0.2.0", false))
     )
   }
 }

@@ -9,6 +9,7 @@ package com.snowplowanalytics.snowflake.loader
 package connection
 
 import ast._
+import com.snowplowanalytics.snowflake.core.Config
 
 class DryRun {
   private val messages = collection.mutable.ListBuffer.newBuilder[String]
@@ -61,9 +62,9 @@ class DryRun {
 }
 
 object DryRun extends Connection[DryRun] {
-  def getConnection(config: LoaderConfig): DryRun = {
+  def getConnection(config: Config): DryRun = {
     val logConnection = new DryRun
-    logConnection.log(s"Connected to ${config.snowflakeDb} database")
+    logConnection.log(s"Connected to ${config.database} database")
     logConnection
   }
 

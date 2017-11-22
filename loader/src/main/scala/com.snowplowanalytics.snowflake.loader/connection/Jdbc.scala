@@ -9,31 +9,32 @@ package com.snowplowanalytics.snowflake.loader
 package connection
 
 import ast._
-
-import java.sql.{Connection => JdbcConnection, DriverManager, SQLException}
+import java.sql.{DriverManager, SQLException, Connection => JdbcConnection}
 import java.util.Properties
+
+import com.snowplowanalytics.snowflake.core.Config
 
 object Jdbc extends Connection[JdbcConnection] {
 
   @throws[SQLException]
-  def getConnection(config: LoaderConfig): JdbcConnection = {
+  def getConnection(config: Config): JdbcConnection = {
     Class.forName("net.snowflake.client.jdbc.SnowflakeDriver")
 
     // US West is default: https://docs.snowflake.net/manuals/user-guide/jdbc-configure.html#jdbc-driver-connection-string
     val host = if (config.snowflakeRegion == "us-west-1")
-      s"${config.snowflakeAccount}.snowflakecomputing.com"
+      s"${config.account}.snowflakecomputing.com"
     else
-      s"${config.snowflakeAccount}.${config.snowflakeRegion}.snowflakecomputing.com"
+      s"${config.account}.${config.snowflakeRegion}.snowflakecomputing.com"
 
     // Build connection properties
     val properties = new Properties()
 
-    properties.put("user", config.snowflakeUser)
-    properties.put("password", config.snowflakePassword)
-    properties.put("account", config.snowflakeAccount)
-    properties.put("warehouse", config.snowflakeWarehouse)
-    properties.put("db", config.snowflakeDb)
-    properties.put("schema", config.snowflakeSchema)
+    properties.put("user", config.username)
+    properties.put("password", config.password)
+    properties.put("account", config.account)
+    properties.put("warehouse", config.warehouse)
+    properties.put("db", config.database)
+    properties.put("schema", config.schema)
 
     val connectStr = s"jdbc:snowflake://$host"
     DriverManager.getConnection(connectStr, properties)

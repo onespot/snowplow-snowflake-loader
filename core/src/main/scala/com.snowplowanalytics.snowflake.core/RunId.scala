@@ -13,9 +13,9 @@ import cats.data.{Validated, ValidatedNel}
 import cats.implicits._
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue
-import com.snowplowanalytics.snowflake.core.Config.S3Folder
 
 import org.joda.time.{ DateTime, DateTimeZone }
+import Config.S3Folder
 
 /**
   * S3 folder saved in processing manifest. Added by Transformer job

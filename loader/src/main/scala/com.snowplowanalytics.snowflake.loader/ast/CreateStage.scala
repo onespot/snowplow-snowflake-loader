@@ -7,4 +7,6 @@
  */
 package com.snowplowanalytics.snowflake.loader.ast
 
-case class CreateStage(name: String, url: String, fileFormat: String, schema: String)
+import com.snowplowanalytics.snowflake.core.Config.S3Folder
+
+case class CreateStage(name: String, url: S3Folder, fileFormat: String, schema: String)

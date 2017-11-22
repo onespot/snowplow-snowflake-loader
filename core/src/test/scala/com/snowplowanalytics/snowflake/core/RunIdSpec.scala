@@ -9,6 +9,7 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue
 import org.joda.time.{ DateTime, DateTimeZone }
 
 import com.snowplowanalytics.snowflake.core.RunId._
+import com.snowplowanalytics.snowflake.core.Config.S3Folder.{coerce => s3}
 
 class RunIdSpec extends Specification { def is = s2"""
   Parse valid FreshRunId $e2
@@ -51,7 +52,7 @@ class RunIdSpec extends Specification { def is = s2"""
       new DateTime(1502357136000L).withZone(DateTimeZone.UTC),
       new DateTime(1502368136000L).withZone(DateTimeZone.UTC),
       List("unstruct_event_com_acme_event_1", "contexts_com_acme_context_1"),
-      "s3://bucket/output/archived/run-01/",
+      s3("s3://bucket/output/archived/run-01/"),
       "some-transformer",
       false)
     )
@@ -79,7 +80,7 @@ class RunIdSpec extends Specification { def is = s2"""
       new DateTime(1502357136000L).withZone(DateTimeZone.UTC),
       new DateTime(1502368136000L).withZone(DateTimeZone.UTC),
       List("unstruct_event_com_acme_event_1", "contexts_com_acme_context_1"),
-      "s3://bucket/output/archived/run-01/",
+      s3("s3://bucket/output/archived/run-01/"),
       new DateTime(1502398136000L).withZone(DateTimeZone.UTC),
       "some-transformer",
       "loader"))
