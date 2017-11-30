@@ -37,8 +37,8 @@ class ConfigSpec extends Specification { def is = s2"""
     val expected = CliLoaderConfiguration(
       Config.SetupCommand,
       Config(
-        accessKeyId = "ABCD",
-        secretAccessKey = "abcd",
+        accessKeyId = Some("ABCD"),
+        secretAccessKey = Some("abcd"),
         awsRegion = "us-east-1",
         manifest = "snowflake-manifest",
         stage = "some_stage",
@@ -67,8 +67,8 @@ class ConfigSpec extends Specification { def is = s2"""
     val expected = CliLoaderConfiguration(
       Config.LoadCommand,
       Config(
-        accessKeyId =  "ABCD",
-        secretAccessKey = "abcd",
+        accessKeyId = Some("ABCD"),
+        secretAccessKey = Some("abcd"),
         awsRegion = "us-east-1",
 
         manifest = "snowflake-manifest",
@@ -100,8 +100,8 @@ class ConfigSpec extends Specification { def is = s2"""
     val expected = CliLoaderConfiguration(
       Config.LoadCommand,
       Config(
-        accessKeyId =  "ABCD",
-        secretAccessKey = "abcd",
+        accessKeyId =  Some("ABCD"),
+        secretAccessKey = Some("abcd"),
         awsRegion = "us-east-1",
 
         manifest = "snowflake-manifest",

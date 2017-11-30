@@ -96,8 +96,14 @@ object Statement {
   }
 
   implicit object CopyInto extends Statement[CopyInto] {
-    def getStatement(ast: CopyInto): SqlStatement =
-      SqlStatement(s"COPY INTO ${ast.schema}.${ast.table}(${ast.columns.mkString(",")}) FROM @${ast.from.schema}.${ast.from.stageName}/${ast.from.path} CREDENTIALS = (AWS_KEY_ID = '${ast.credentials.awsAccessKeyId}' AWS_SECRET_KEY = '${ast.credentials.awsSecretKey}') FILE_FORMAT = (FORMAT_NAME = '${ast.fileFormat.schema}.${ast.fileFormat.formatName}')" )
+    def getStatement(ast: CopyInto): SqlStatement = {
+      val credentials = ast.credentials match {
+        case Some(c) => s" CREDENTIALS = (AWS_KEY_ID = '${c.awsAccessKeyId}' AWS_SECRET_KEY = '${c.awsSecretKey}')"
+        case None => ""  // Expect credentials are available in stage
+      }
+      SqlStatement(s"COPY INTO ${ast.schema}.${ast.table}(${ast.columns.mkString(",")}) FROM @${ast.from.schema}.${ast.from.stageName}/${ast.from.path}$credentials FILE_FORMAT = (FORMAT_NAME = '${ast.fileFormat.schema}.${ast.fileFormat.formatName}')" )
+
+    }
   }
 
   implicit object ShowStageStatement extends Statement[Show.ShowStages] {

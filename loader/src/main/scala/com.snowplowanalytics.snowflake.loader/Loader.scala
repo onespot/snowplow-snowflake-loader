@@ -153,12 +153,18 @@ object Loader {
     * @param runId directory in stage, where files reside
     */
   def loadTempTable[C](db: Connection[C], connection: C, config: Config, tempTableCreateStatement: CreateTable, runId: String): Unit = {
+    val credentials = for {
+      accessKey <- config.accessKeyId
+      secretKey <- config.secretAccessKey
+    } yield CopyInto.AwsCreds(accessKey, secretKey)
+
+
     val tempTableCopyStatement = CopyInto(
       tempTableCreateStatement.schema,
       tempTableCreateStatement.name,
       List(Defaults.TempTableColumn),
       CopyInto.From(config.schema, config.stage, runId),
-      CopyInto.AwsCreds(config.accessKeyId, config.secretAccessKey),
+      credentials,
       CopyInto.FileFormat(config.schema, Defaults.FileFormat))
 
     db.execute(connection, tempTableCreateStatement)

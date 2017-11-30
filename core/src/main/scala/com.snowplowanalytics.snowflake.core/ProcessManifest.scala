@@ -8,9 +8,11 @@
 package com.snowplowanalytics.snowflake.core
 
 import cats.implicits._
+
 import java.util.{Map => JMap}
 
 import scala.annotation.tailrec
+
 import scala.collection.convert.decorateAsJava._
 import scala.collection.convert.decorateAsScala._
 import scala.util.control.NonFatal
@@ -47,17 +49,28 @@ object ProcessManifest {
 
   type DbItem = JMap[String, AttributeValue]
 
-  /** Get DynamoDB client */
-  def getDynamoDb(awsAccessKey: String, awsSecretKey: String, awsRegion: String) = {
-    val credentials = new BasicAWSCredentials(awsAccessKey, awsSecretKey)
-    val provider = new AWSStaticCredentialsProvider(credentials)
+  def getCredentials(awsAccessKey: Option[String], awsSecretKey: Option[String]): AWSCredentials = {
+    val staticCredentials = for {
+      accessKey <- awsAccessKey
+      secretKey <- awsSecretKey
+    } yield new BasicAWSCredentials(accessKey, secretKey)
 
+    staticCredentials match {
+      case Some(static) => static
+      case None => DefaultAWSCredentialsProviderChain.getInstance().getCredentials
+    }
+  }
+
+  /** Get DynamoDB client */
+  def getDynamoDb(awsAccessKey: Option[String], awsSecretKey: Option[String], awsRegion: String) = {
+    val credentials = getCredentials(awsAccessKey, awsSecretKey)
+    val provider = new AWSStaticCredentialsProvider(credentials)
     AmazonDynamoDBClientBuilder.standard().withRegion(awsRegion).withCredentials(provider).build()
   }
 
   /** Get S3 client */
-  def getS3(awsAccessKey: String, awsSecretKey: String, awsRegion: String) = {
-    val credentials = new BasicAWSCredentials(awsAccessKey, awsSecretKey)
+  def getS3(awsAccessKey: Option[String], awsSecretKey: Option[String], awsRegion: String) = {
+    val credentials = getCredentials(awsAccessKey, awsSecretKey)
     val provider = new AWSStaticCredentialsProvider(credentials)
 
     AmazonS3ClientBuilder.standard().withRegion(awsRegion).withCredentials(provider).build()

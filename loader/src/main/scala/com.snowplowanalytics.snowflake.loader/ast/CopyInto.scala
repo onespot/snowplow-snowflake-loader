@@ -2,7 +2,7 @@ package com.snowplowanalytics.snowflake.loader.ast
 
 import CopyInto._
 
-case class CopyInto(schema: String, table: String, columns: List[String], from: From, credentials: AwsCreds, fileFormat: FileFormat)
+case class CopyInto(schema: String, table: String, columns: List[String], from: From, credentials: Option[AwsCreds], fileFormat: FileFormat)
 
 object CopyInto {
   case class From(schema: String, stageName: String, path: String)

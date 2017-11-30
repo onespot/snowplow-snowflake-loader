@@ -58,8 +58,8 @@ class LoaderSpec extends Specification { def is = s2"""
 
   def e5 = {
     val config = Config(
-      accessKeyId = "accessKey",
-      secretAccessKey = "secretKey",
+      accessKeyId = Some("accessKey"),
+      secretAccessKey = Some("secretKey"),
       awsRegion = "awsRegion",
       manifest = "snoflake-manifest",
       snowflakeRegion = "ue-east-1",
@@ -118,7 +118,7 @@ class LoaderSpec extends Specification { def is = s2"""
 
   def e6 = {
     val connection = new LoaderSpec.Mock()
-    val config = Config(Some("access"), Some("secret"), "us-east-1", "manifest", "eu-central-1", "archive-stage", "s3://archive", "s3://enriched-input", "user", "pass", "snowplow-acc", "wh", "db", "atomic")
+    val config = Config(Some("access"), Some("secret"), "us-east-1", "manifest", "eu-central-1", "archive-stage", Config.S3Folder.coerce("s3://archive/"), Config.S3Folder.coerce("s3://enriched-input/"), "user", "pass", "snowplow-acc", "wh", "db", "atomic")
     Loader.exec(LoaderSpec.Mock, connection, new loader.LoaderSpec.ProcessingManifestTest, config)
     val expected = List(
       "SHOW schemas LIKE 'atomic'",
@@ -224,7 +224,7 @@ object LoaderSpec {
           DateTime.parse("2017-12-10T01:20+02:00"),
           DateTime.parse("2017-12-10T01:20+02:00"),
           List("contexts_com_acme_something_1"),
-          s3("s3://archive/run=2017-12-10-14-30-35/)", "0.2.0", false))
+          Config.S3Folder.coerce("s3://archive/run=2017-12-10-14-30-35/"), "0.2.0", false))
     )
   }
 }

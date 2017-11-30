@@ -25,8 +25,8 @@ import scala.util.control.NonFatal
 
 /** Common loader configuration interface, extracted from configuration file */
 case class Config(
-  accessKeyId: String,
-  secretAccessKey: String,
+  accessKeyId: Option[String],
+  secretAccessKey: Option[String],
   awsRegion: String,
   manifest: String,
 
@@ -60,7 +60,10 @@ object Config {
   def parseLoaderCli(args: Array[String]): Option[Either[String, CliLoaderConfiguration]] =
     loaderCliParser.parse(args, rawCliLoader).map(validateLoaderCli)
 
-  /** Validate raw configuration into consistent end configuration */
+  def parseTransformerCli(args: Array[String]): Option[Either[String, CliTransformerConfiguration]] =
+    transformerCliParser.parse(args, rawCliTransformer).map(validateTransformerCli)
+
+  /** Validate raw loader's CLI configuration */
   def validateLoaderCli(rawConfig: RawCliLoader): Either[String, CliLoaderConfiguration] = {
     for {
       command <- getSubcommand(rawConfig.command)
@@ -72,9 +75,7 @@ object Config {
     } yield CliLoaderConfiguration(command, config, rawConfig.dryRun)
   }
 
-  def parseTransformerCli(args: Array[String]): Option[Either[String, CliTransformerConfiguration]] =
-    transformerCliParser.parse(args, rawCliTransformer).map(validateTransformerCli)
-
+  /** Validate raw transformer's CLI configuration  */
   def validateTransformerCli(rawConfig: RawCliTransformer): Either[String, CliTransformerConfiguration] = {
     for {
       resolverConfig <- parseJsonFile(rawConfig.resolver, base64 = true)
@@ -84,6 +85,7 @@ object Config {
       config <- extract(validConfig)
     } yield CliTransformerConfiguration(config)
   }
+
 
   /** Starting raw value, required by `parser` */
   private val rawCliLoader = RawCliLoader("noop", "", "", false, false)
@@ -141,6 +143,7 @@ object Config {
     help("help").text("prints this usage text")
   }
 
+  // Common functionality
 
   /** Parse JSON either container or local file or base64-encoded string */
   def parseJsonFile(ref: String, base64: Boolean): Either[String, JValue] = {
@@ -152,7 +155,7 @@ object Config {
         case NonFatal(e) => Left(e.getMessage)
       }
       json <- try {
-        Right(parseJson(content))
+        Right(parse(content))
       } catch {
         case NonFatal(e) => Left(e.getMessage)
       }

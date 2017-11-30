@@ -14,6 +14,7 @@ class StatementSpec extends Specification { def is = s2"""
   Transform COPY INTO AST into String $e2
   Transform INSERT INTO AST into String $e3
   Transform SHOW into String $e4
+  Transform COPY INTO AST (without credentials) into String $e5
   """
 
   def e1 = {
@@ -38,7 +39,7 @@ class StatementSpec extends Specification { def is = s2"""
       "some_table",
       columns,
       CopyInto.From("other_schema", "stage_name", "path/to/dir"),
-      CopyInto.AwsCreds("AAA", "xyz"),
+      Some(CopyInto.AwsCreds("AAA", "xyz")),
       CopyInto.FileFormat("third_schema", "format_name"))
 
     val result = input.getStatement.value
@@ -70,6 +71,24 @@ class StatementSpec extends Specification { def is = s2"""
     val ast = Show.ShowStages(Some("s3://archive"), Some("atomic"))
     val result = ast.getStatement.value
     val expected = "SHOW stages LIKE 's3://archive' IN atomic"
+    result must beEqualTo(expected)
+  }
+
+  def e5 = {
+    val columns = List("id", "foo", "fp_id", "json")
+    val input = CopyInto(
+      "some_schema",
+      "some_table",
+      columns,
+      CopyInto.From("other_schema", "stage_name", "path/to/dir"),
+      None,
+      CopyInto.FileFormat("third_schema", "format_name"))
+
+    val result = input.getStatement.value
+    val expected = "COPY INTO some_schema.some_table(id,foo,fp_id,json) " +
+      "FROM @other_schema.stage_name/path/to/dir " +
+      "FILE_FORMAT = (FORMAT_NAME = 'third_schema.format_name')"
+
     result must beEqualTo(expected)
   }
 }
