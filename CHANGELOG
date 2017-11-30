@@ -1,3 +1,20 @@
+Version 0.3.0 (2017-11-XX)
+--------------------------
+Allow loader to use temporary credentials (#37)
+Allow JDBC credentials to be stored in EC2 parameter store (#36)
+Allow loader to use the full AWS credentials chain (#32)
+Fix loading of NULLs as strings (#14)
+Use self-describing configuration (#19)
+Use transaction for altering table and load (#25)
+Add AWS credentials to stage (#20)
+Add --dry-run option (#9)
+Remove all references to Project Strawberry (#16)
+Bump Snowflake JDBC driver to 3.3.2 (#29)
+Bump Scala Analytics SDK to 0.2.1 (#27)
+Bump AWS SDK to 1.11.208 (#26)
+Make SparkContext initializing eagerly (#24)
+
+
 Version 0.2.0 (2017-10-05)
 --------------------------
 Change file format to JSON (#7)
