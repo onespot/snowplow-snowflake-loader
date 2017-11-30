@@ -1,3 +1,18 @@
+Version 0.3.0 (2017-11-XX)
+--------------------------
+Fix loading of NULLs as strings (#14)
+Add AWS credentials to stage (#20)
+Allow loader to use the full AWS credentials chain (#32)
+Use self-describing configuration (#19)
+Add --dry-run option (#9)
+Use transaction for altering table and load (#25)
+Remove all references to Project Strawberry (#16)
+Bump Snowflake JDBC driver to 3.3.2 (#29)
+Bump Scala Analytics SDK to 0.2.1 (#27)
+Make SparkContext initializing eagerly (#24)
+Bump AWS SDK to 1.11.208 (#26)
+
+
 Version 0.2.0 (2017-10-05)
 --------------------------
 Change file format to JSON (#7)
