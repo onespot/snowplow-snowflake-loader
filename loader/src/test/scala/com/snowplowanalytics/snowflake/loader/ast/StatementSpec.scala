@@ -23,6 +23,7 @@ class StatementSpec extends Specification { def is = s2"""
   Transform SHOW into String $e4
   Transform COPY INTO AST (without credentials) into String $e5
   Transform CREATE STAGE AST into String $e6
+  Transform COPY INTO AST (with stripping nulls) into String $e7
   """
 
   def e1 = {
@@ -48,7 +49,8 @@ class StatementSpec extends Specification { def is = s2"""
       columns,
       CopyInto.From("other_schema", "stage_name", "path/to/dir"),
       Some(Common.AwsCreds("AAA", "xyz")),
-      CopyInto.FileFormat("third_schema", "format_name"))
+      CopyInto.FileFormat("third_schema", "format_name"),
+      false)
 
     val result = input.getStatement.value
     val expected = "COPY INTO some_schema.some_table(id,foo,fp_id,json) " +
@@ -90,7 +92,8 @@ class StatementSpec extends Specification { def is = s2"""
       columns,
       CopyInto.From("other_schema", "stage_name", "path/to/dir"),
       None,
-      CopyInto.FileFormat("third_schema", "format_name"))
+      CopyInto.FileFormat("third_schema", "format_name"),
+      false)
 
     val result = input.getStatement.value
     val expected = "COPY INTO some_schema.some_table(id,foo,fp_id,json) " +
@@ -105,6 +108,26 @@ class StatementSpec extends Specification { def is = s2"""
 
     val result = statement.getStatement.value
     val expected = "CREATE STAGE IF NOT EXISTS atomic.snowplow_stage URL = 's3://cross-batch/' FILE_FORMAT = JSON CREDENTIALS = (AWS_KEY_ID = 'ACCESS' AWS_SECRET_KEY = 'secret')"
+
+    result must beEqualTo(expected)
+  }
+
+  def e7 = {
+    val columns = List("id", "foo", "fp_id", "json")
+    val input = CopyInto(
+      "some_schema",
+      "some_table",
+      columns,
+      CopyInto.From("other_schema", "stage_name", "path/to/dir"),
+      None,
+      CopyInto.FileFormat("third_schema", "format_name"),
+      true)
+
+    val result = input.getStatement.value
+    val expected = "COPY INTO some_schema.some_table(id,foo,fp_id,json) " +
+      "FROM @other_schema.stage_name/path/to/dir " +
+      "FILE_FORMAT = (FORMAT_NAME = 'third_schema.format_name' " +
+      "STRIP_NULL_VALUES = TRUE)"
 
     result must beEqualTo(expected)
   }

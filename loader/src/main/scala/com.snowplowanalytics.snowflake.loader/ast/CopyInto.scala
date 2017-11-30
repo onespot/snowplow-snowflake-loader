@@ -14,7 +14,14 @@ package com.snowplowanalytics.snowflake.loader.ast
 
 import CopyInto._
 
-case class CopyInto(schema: String, table: String, columns: List[String], from: From, credentials: Option[Common.AwsCreds], fileFormat: FileFormat)
+case class CopyInto(
+  schema: String,
+  table: String,
+  columns: List[String],
+  from: From,
+  credentials: Option[Common.AwsCreds],
+  fileFormat: FileFormat,
+  stripNullValues: Boolean)   // Valid only for JSON
 
 object CopyInto {
   case class From(schema: String, stageName: String, path: String)

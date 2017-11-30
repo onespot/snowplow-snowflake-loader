@@ -170,7 +170,8 @@ object Loader {
       List(Defaults.TempTableColumn),
       CopyInto.From(config.schema, config.stage, runId),
       credentials,
-      CopyInto.FileFormat(config.schema, Defaults.FileFormat))
+      CopyInto.FileFormat(config.schema, Defaults.FileFormat),
+      true)
 
     db.execute(connection, tempTableCreateStatement)
     db.execute(connection, tempTableCopyStatement)
