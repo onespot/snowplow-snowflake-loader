@@ -110,7 +110,9 @@ object Statement {
         case Some(c) => s" CREDENTIALS = (AWS_KEY_ID = '${c.awsAccessKeyId}' AWS_SECRET_KEY = '${c.awsSecretKey}')"
         case None => ""  // Expect credentials are available in stage
       }
-      SqlStatement(s"COPY INTO ${ast.schema}.${ast.table}(${ast.columns.mkString(",")}) FROM @${ast.from.schema}.${ast.from.stageName}/${ast.from.path}$credentials FILE_FORMAT = (FORMAT_NAME = '${ast.fileFormat.schema}.${ast.fileFormat.formatName}')" )
+      val stripNulls = if (ast.stripNullValues) " STRIP_NULL_VALUES = TRUE"
+      else ""
+      SqlStatement(s"COPY INTO ${ast.schema}.${ast.table}(${ast.columns.mkString(",")}) FROM @${ast.from.schema}.${ast.from.stageName}/${ast.from.path}$credentials FILE_FORMAT = (FORMAT_NAME = '${ast.fileFormat.schema}.${ast.fileFormat.formatName}'$stripNulls)" )
 
     }
   }
