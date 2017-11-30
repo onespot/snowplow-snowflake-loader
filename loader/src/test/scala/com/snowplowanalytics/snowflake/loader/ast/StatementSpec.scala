@@ -9,12 +9,15 @@ package com.snowplowanalytics.snowflake.loader.ast
 
 import org.specs2.Specification
 
+import com.snowplowanalytics.snowflake.core.Config
+
 class StatementSpec extends Specification { def is = s2"""
   Transform CREATE TABLE AST into String $e1
   Transform COPY INTO AST into String $e2
   Transform INSERT INTO AST into String $e3
   Transform SHOW into String $e4
   Transform COPY INTO AST (without credentials) into String $e5
+  Transform CREATE STAGE AST into String $e6
   """
 
   def e1 = {
@@ -39,7 +42,7 @@ class StatementSpec extends Specification { def is = s2"""
       "some_table",
       columns,
       CopyInto.From("other_schema", "stage_name", "path/to/dir"),
-      Some(CopyInto.AwsCreds("AAA", "xyz")),
+      Some(Common.AwsCreds("AAA", "xyz")),
       CopyInto.FileFormat("third_schema", "format_name"))
 
     val result = input.getStatement.value
@@ -88,6 +91,15 @@ class StatementSpec extends Specification { def is = s2"""
     val expected = "COPY INTO some_schema.some_table(id,foo,fp_id,json) " +
       "FROM @other_schema.stage_name/path/to/dir " +
       "FILE_FORMAT = (FORMAT_NAME = 'third_schema.format_name')"
+
+    result must beEqualTo(expected)
+  }
+
+  def e6 = {
+    val statement = CreateStage("snowplow_stage", Config.S3Folder.coerce("s3://cross-batch"), "JSON", "atomic", Some(Common.AwsCreds("ACCESS", "secret")))
+
+    val result = statement.getStatement.value
+    val expected = "CREATE STAGE IF NOT EXISTS atomic.snowplow_stage URL = 's3://cross-batch/' FILE_FORMAT = JSON CREDENTIALS = (AWS_KEY_ID = 'ACCESS' AWS_SECRET_KEY = 'secret')"
 
     result must beEqualTo(expected)
   }

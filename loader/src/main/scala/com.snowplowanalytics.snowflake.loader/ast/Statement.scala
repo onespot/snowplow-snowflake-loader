@@ -49,8 +49,12 @@ object Statement {
 
   implicit object CreateStageStatement extends Statement[CreateStage] {
     def getStatement(ddl: CreateStage): SqlStatement = {
+      val credentials = ddl.credentials match {
+        case Some(c) => s" CREDENTIALS = (AWS_KEY_ID = '${c.awsAccessKeyId}' AWS_SECRET_KEY = '${c.awsSecretKey}')"
+        case None => ""  // Expect credentials are available in stage
+      }
       SqlStatement(
-        s"CREATE STAGE IF NOT EXISTS ${ddl.schema}.${ddl.name} URL = '${ddl.url}' FILE_FORMAT = ${ddl.fileFormat}"
+        s"CREATE STAGE IF NOT EXISTS ${ddl.schema}.${ddl.name} URL = '${ddl.url}' FILE_FORMAT = ${ddl.fileFormat}$credentials"
       )
     }
   }

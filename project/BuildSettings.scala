@@ -24,7 +24,7 @@ object BuildSettings {
     name := "snowplow-snowflake-loader",
     version := "0.3.0",
     organization := "com.snowplowanalytics",
-    scalaVersion := "2.11.11",
+    scalaVersion := "2.11.12",
     resolvers ++= Seq(
       "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"
     ),

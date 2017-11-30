@@ -207,6 +207,8 @@ object Config {
         case head :: tail => (head, tail.mkString("/") + "/")
         case Nil => throw new IllegalArgumentException(s"Invalid S3 bucket path was passed") // Impossible
       }
+
+    override def toString: String = path
   }
 
   implicit val s3folderReads = scopt.Read.reads(S3Folder.coerce)

@@ -156,7 +156,7 @@ object Loader {
     val credentials = for {
       accessKey <- config.accessKeyId
       secretKey <- config.secretAccessKey
-    } yield CopyInto.AwsCreds(accessKey, secretKey)
+    } yield Common.AwsCreds(accessKey, secretKey)
 
 
     val tempTableCopyStatement = CopyInto(
