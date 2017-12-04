@@ -1,27 +1,32 @@
 /*
- * PROPRIETARY AND CONFIDENTIAL
+ * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
  *
- * Unauthorized copying of this project via any medium is strictly prohibited.
+ * This program is licensed to you under the Apache License Version 2.0,
+ * and you may not use this file except in compliance with the Apache License Version 2.0.
+ * You may obtain a copy of the Apache License Version 2.0 at http://www.apache.org/licenses/LICENSE-2.0.
  *
- * Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the Apache License Version 2.0 is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
  */
 package com.snowplowanalytics.snowflake.core
+
+import scala.io.Source
+import scala.util.control.NonFatal
 
 import java.io.File
 import java.util.Base64
 
 import cats.implicits._
 
+import org.json4s.JsonAST.{JInt, JNull}
+import org.json4s.{CustomSerializer, JObject, JString, JValue, MappingException}
+import org.json4s.jackson.JsonMethods.parse
+
 import com.snowplowanalytics.iglu.client.Resolver
 import com.snowplowanalytics.iglu.client.validation.ValidatableJValue.validate
 import com.snowplowanalytics.snowflake.generated.ProjectMetadata
-
-import org.json4s.JsonAST.JString
-import org.json4s.{CustomSerializer, JValue, MappingException}
-import org.json4s.jackson.JsonMethods.parse
-
-import scala.io.Source
-import scala.util.control.NonFatal
 
 /** Common loader configuration interface, extracted from configuration file */
 case class Config(
