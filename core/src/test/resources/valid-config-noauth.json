@@ -2,10 +2,7 @@
   "schema": "iglu:com.snowplowanalytics.snowplow.storage/snowflake_config/jsonschema/1-0-0",
   "data": {
     "name": "Snowflake",
-    "auth": {
-      "roleArn": "arn:aws:iam::111222333444:role/SnowflakeLoadRole",
-      "sessionDuration": 900
-    },
+    "auth": null,
     "awsRegion": "us-east-1",
     "manifest": "snowflake-manifest",
     "snowflakeRegion": "us-west-1",

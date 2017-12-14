@@ -104,10 +104,10 @@ object Loader {
   /** Scan state from processing manifest, extract not-loaded folders and lot each of them */
   def run(config: Config.CliLoaderConfiguration): Unit = {
     if (config.dryRun) {
-      val dynamoDb = ProcessManifest.getDynamoDb(config.loaderConfig.accessKeyId, config.loaderConfig.secretAccessKey, config.loaderConfig.awsRegion)
+      val dynamoDb = ProcessManifest.getDynamoDb(config.loaderConfig.awsRegion)
       exec(DryRun, new DryRun(), DryRunProcessingManifest(dynamoDb), config.loaderConfig)
     } else {
-      val dynamoDb = ProcessManifest.getDynamoDb(config.loaderConfig.accessKeyId, config.loaderConfig.secretAccessKey, config.loaderConfig.awsRegion)
+      val dynamoDb = ProcessManifest.getDynamoDb(config.loaderConfig.awsRegion)
       val manifest = AwsLoaderProcessingManifest(dynamoDb)
       val connection = Jdbc.getConnection(config.loaderConfig)
       exec(Jdbc, connection, manifest, config.loaderConfig)
@@ -158,11 +158,11 @@ object Loader {
     * @param runId directory in stage, where files reside
     */
   def loadTempTable[C](db: Connection[C], connection: C, config: Config, tempTableCreateStatement: CreateTable, runId: String): Unit = {
-    val credentials = for {
-      accessKey <- config.accessKeyId
-      secretKey <- config.secretAccessKey
-    } yield Common.AwsCreds(accessKey, secretKey)
-
+    val credentials = PasswordService.getLoadCredentials(config.auth) match {
+      case Left(PasswordService.NoCredentials) => None
+      case Left(PasswordService.CredentialsFailure(error)) => throw new RuntimeException(error)
+      case Right(creds) => Some(creds)
+    }
 
     val tempTableCopyStatement = CopyInto(
       tempTableCreateStatement.schema,

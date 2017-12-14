@@ -48,7 +48,7 @@ class StatementSpec extends Specification { def is = s2"""
       "some_table",
       columns,
       CopyInto.From("other_schema", "stage_name", "path/to/dir"),
-      Some(Common.AwsCreds("AAA", "xyz")),
+      Some(Common.AwsCreds("AAA", "xyz", None)),
       CopyInto.FileFormat("third_schema", "format_name"),
       false)
 
@@ -104,7 +104,7 @@ class StatementSpec extends Specification { def is = s2"""
   }
 
   def e6 = {
-    val statement = CreateStage("snowplow_stage", Config.S3Folder.coerce("s3://cross-batch"), "JSON", "atomic", Some(Common.AwsCreds("ACCESS", "secret")))
+    val statement = CreateStage("snowplow_stage", Config.S3Folder.coerce("s3://cross-batch"), "JSON", "atomic", Some(Common.AwsCreds("ACCESS", "secret", None)))
 
     val result = statement.getStatement.value
     val expected = "CREATE STAGE IF NOT EXISTS atomic.snowplow_stage URL = 's3://cross-batch/' FILE_FORMAT = JSON CREDENTIALS = (AWS_KEY_ID = 'ACCESS' AWS_SECRET_KEY = 'secret')"

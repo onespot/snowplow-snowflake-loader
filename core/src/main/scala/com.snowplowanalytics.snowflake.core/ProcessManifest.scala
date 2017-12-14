@@ -54,30 +54,17 @@ object ProcessManifest {
 
   type DbItem = JMap[String, AttributeValue]
 
-  def getCredentials(awsAccessKey: Option[String], awsSecretKey: Option[String]): AWSCredentials = {
-    val staticCredentials = for {
-      accessKey <- awsAccessKey
-      secretKey <- awsSecretKey
-    } yield new BasicAWSCredentials(accessKey, secretKey)
-
-    staticCredentials match {
-      case Some(static) => static
-      case None => DefaultAWSCredentialsProviderChain.getInstance().getCredentials
-    }
-  }
-
   /** Get DynamoDB client */
-  def getDynamoDb(awsAccessKey: Option[String], awsSecretKey: Option[String], awsRegion: String) = {
-    val credentials = getCredentials(awsAccessKey, awsSecretKey)
+  def getDynamoDb(awsRegion: String) = {
+    val credentials = DefaultAWSCredentialsProviderChain.getInstance().getCredentials
     val provider = new AWSStaticCredentialsProvider(credentials)
     AmazonDynamoDBClientBuilder.standard().withRegion(awsRegion).withCredentials(provider).build()
   }
 
   /** Get S3 client */
-  def getS3(awsAccessKey: Option[String], awsSecretKey: Option[String], awsRegion: String) = {
-    val credentials = getCredentials(awsAccessKey, awsSecretKey)
+  def getS3(awsRegion: String) = {
+    val credentials = DefaultAWSCredentialsProviderChain.getInstance().getCredentials
     val provider = new AWSStaticCredentialsProvider(credentials)
-
     AmazonS3ClientBuilder.standard().withRegion(awsRegion).withCredentials(provider).build()
   }
 

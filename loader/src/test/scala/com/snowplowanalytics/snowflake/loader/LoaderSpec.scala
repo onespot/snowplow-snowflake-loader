@@ -63,8 +63,10 @@ class LoaderSpec extends Specification { def is = s2"""
 
   def e5 = {
     val config = Config(
-      accessKeyId = Some("accessKey"),
-      secretAccessKey = Some("secretKey"),
+      auth = Config.CredentialsAuth(
+        accessKeyId = "accessKey",
+        secretAccessKey = "secretKey"
+      ),
       awsRegion = "awsRegion",
       manifest = "snoflake-manifest",
       snowflakeRegion = "ue-east-1",
@@ -72,7 +74,6 @@ class LoaderSpec extends Specification { def is = s2"""
       stageUrl = Config.S3Folder.coerce("s3://somestage/foo"),
       username = "snowfplow-loader",
       password = Config.PlainText("super-secret"),
-      roleArn = None,
       input = Config.S3Folder.coerce("s3://snowflake/input/"),
       account = "snowplow-account",
       warehouse = "snowplow_wa",
@@ -124,7 +125,20 @@ class LoaderSpec extends Specification { def is = s2"""
 
   def e6 = {
     val connection = new LoaderSpec.Mock()
-    val config = Config(Some("access"), Some("secret"), "us-east-1", "manifest", "eu-central-1", "archive-stage", Config.S3Folder.coerce("s3://archive/"), Config.S3Folder.coerce("s3://enriched-input/"), "user", Config.PlainText("pass"), None, "snowplow-acc", "wh", "db", "atomic")
+    val config = Config(
+      auth = Config.CredentialsAuth("access", "secret"),
+      "us-east-1",
+      "manifest",
+      "eu-central-1",
+      "archive-stage",
+      Config.S3Folder.coerce("s3://archive/"),
+      Config.S3Folder.coerce("s3://enriched-input/"),
+      "user",
+      Config.PlainText("pass"),
+      "snowplow-acc",
+      "wh",
+      "db",
+      "atomic")
     Loader.exec(LoaderSpec.Mock, connection, new loader.LoaderSpec.ProcessingManifestTest, config)
     val expected = List(
       "SHOW schemas LIKE 'atomic'",

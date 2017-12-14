@@ -2,8 +2,10 @@
   "schema": "iglu:com.snowplowanalytics.snowplow.storage/snowflake_config/jsonschema/1-0-0",
   "data": {
     "name": "Snowflake",
-    "accessKeyId": "ABCD",
-    "secretAccessKey": "abcd",
+    "auth": {
+      "accessKeyId": "ABCD",
+      "secretAccessKey": "abcd"
+    },
     "awsRegion": "us-east-1",
     "manifest": "snowflake-manifest",
     "snowflakeRegion": "us-west-1",
