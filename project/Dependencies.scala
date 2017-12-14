@@ -38,6 +38,7 @@ object Dependencies {
   val s3               = "com.amazonaws"         % "aws-java-sdk-s3"               % V.aws
   val dynamodb         = "com.amazonaws"         % "aws-java-sdk-dynamodb"         % V.aws
   val ssm              = "com.amazonaws"         % "aws-java-sdk-ssm"              % V.aws
+  val sts              = "com.amazonaws"         % "aws-java-sdk-sts"              % V.aws
 
   // Scala
   val spark            = "org.apache.spark"      %% "spark-core"                   % V.spark          % "provided"

@@ -9,7 +9,7 @@
         "vendorPrefixes": [ "com.snowplowanalytics" ],
         "connection": {
           "http": {
-            "uri": "http://0.0.0.0:8888"
+            "uri": "http://iglucentral.com"
           }
         }
       }

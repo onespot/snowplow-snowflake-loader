@@ -27,7 +27,8 @@ lazy val loader = project
   .settings(
     libraryDependencies ++= Seq(
       Dependencies.snowflakeJdbc,
-      Dependencies.ssm
+      Dependencies.ssm,
+      Dependencies.sts
     ) ++ commonDependencies
   )
   .dependsOn(core)

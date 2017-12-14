@@ -55,6 +55,9 @@ object Statement {
   implicit object CreateStageStatement extends Statement[CreateStage] {
     def getStatement(ddl: CreateStage): SqlStatement = {
       val credentials = ddl.credentials match {
+        case Some(c) if c.sessionToken.isDefined =>
+          System.err.println("AWS_TOKEN (temporary credentials) must never be used for stages. Skipping credentials")
+          None
         case Some(c) => s" CREDENTIALS = (AWS_KEY_ID = '${c.awsAccessKeyId}' AWS_SECRET_KEY = '${c.awsSecretKey}')"
         case None => ""  // Expect credentials are available in stage
       }
@@ -107,7 +110,12 @@ object Statement {
   implicit object CopyInto extends Statement[CopyInto] {
     def getStatement(ast: CopyInto): SqlStatement = {
       val credentials = ast.credentials match {
-        case Some(c) => s" CREDENTIALS = (AWS_KEY_ID = '${c.awsAccessKeyId}' AWS_SECRET_KEY = '${c.awsSecretKey}')"
+        case Some(c) =>
+          val token = c.sessionToken match {
+            case None => ""
+            case Some(t) => s" AWS_TOKEN = '$t'"
+          }
+          s" CREDENTIALS = (AWS_KEY_ID = '${c.awsAccessKeyId}' AWS_SECRET_KEY = '${c.awsSecretKey}'$token)"
         case None => ""  // Expect credentials are available in stage
       }
       val stripNulls = if (ast.stripNullValues) " STRIP_NULL_VALUES = TRUE"

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -30,8 +30,7 @@ import com.snowplowanalytics.snowflake.generated.ProjectMetadata
 
 /** Common loader configuration interface, extracted from configuration file */
 case class Config(
-  accessKeyId: Option[String],
-  secretAccessKey: Option[String],
+  auth: Config.AuthMethod,
   awsRegion: String,
   manifest: String,
 
@@ -41,7 +40,6 @@ case class Config(
   input: Config.S3Folder,
   username: String,
   password: Config.PasswordConfig,
-  roleArn: Option[String],
   account: String,
   warehouse: String,
   database: String,
@@ -59,6 +57,12 @@ object Config {
 
   case class RawCliTransformer(loaderConfig: String, resolver: String)
   case class CliTransformerConfiguration(loaderConfig: Config)
+
+  /** Available methods to authenticate Snowflake loading */
+  sealed trait AuthMethod
+  case class RoleAuth(roleArn: String, sessionDuration: Int) extends AuthMethod
+  case class CredentialsAuth(accessKeyId: String, secretAccessKey: String) extends AuthMethod
+  case object StageAuth extends AuthMethod
 
   /** Reference to encrypted entity inside EC2 Parameter Store */
   case class ParameterStoreConfig(parameterName: String)
@@ -86,7 +90,32 @@ object Config {
       parse(s"""{"ec2ParameterStore": {"parameterName":"$parameter"}}""")
   }))
 
-  implicit val formats = org.json4s.DefaultFormats + s3FolderSerializer + PasswordSerializer
+  object AuthSerializer extends CustomSerializer[AuthMethod](_ => ({
+    case JObject(fields) =>
+      val credentials = for {
+        JString(accessKeyId) <- fields.find(_._1 == "accessKeyId").map(_._2)
+        JString(secretAccessKey) <- fields.find(_._1 == "secretAccessKey").map(_._2)
+      } yield CredentialsAuth(accessKeyId, secretAccessKey)
+
+      val role = for {
+        JString(roleArn) <- fields.find(_._1 == "roleArn").map(_._2)
+        JInt(duration) <- fields.find(_._1 == "sessionDuration").map(_._2)
+      } yield RoleAuth(roleArn, duration.toInt)
+
+      credentials.orElse(role).getOrElse(throw new MappingException("Cannot extract either RoleAuth or CredentialsAuth from auth"))
+    case JNull => StageAuth
+    case _ => throw new MappingException("Cannot extract AuthMethod from non-object")
+
+  },
+  {
+    case RoleAuth(roleArn, duration) =>
+      parse(s"""{"roleArn": "$roleArn", "sessionDuration": $duration}""")
+    case CredentialsAuth(accessKeyId, secretAccessKey) =>
+      parse(s"""{"accessKeyId": "$accessKeyId", "secretAccessKey": "$secretAccessKey"}""")
+
+  }))
+
+  implicit val formats = org.json4s.DefaultFormats + s3FolderSerializer + PasswordSerializer + AuthSerializer
 
   /** Parse and validate Snowflake Loader configuration out of CLI args */
   def parseLoaderCli(args: Array[String]): Option[Either[String, CliLoaderConfiguration]] =

@@ -21,8 +21,9 @@ object Main {
     Config.parseTransformerCli(args) match {
       case Some(Right(Config.CliTransformerConfiguration(appConfig))) =>
 
-        val s3 = ProcessManifest.getS3(appConfig.accessKeyId, appConfig.secretAccessKey, appConfig.awsRegion)
-        val dynamoDb = ProcessManifest.getDynamoDb(appConfig.accessKeyId, appConfig.secretAccessKey, appConfig.awsRegion)
+        // Always use EMR Role role for manifest-access
+        val s3 = ProcessManifest.getS3(appConfig.awsRegion)
+        val dynamoDb = ProcessManifest.getDynamoDb(appConfig.awsRegion)
         val manifest = ProcessManifest.AwsProcessingManifest(s3, dynamoDb)
 
         // Eager SparkContext initializing to avoid YARN timeout

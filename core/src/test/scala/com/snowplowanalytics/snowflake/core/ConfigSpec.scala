@@ -24,14 +24,21 @@ class ConfigSpec extends Specification { def is = s2"""
   Parse valid S3 without trailing slash $e4
   Parse valid S3 with trailing slash and s3n scheme $e5
   Fail to parse invalid scheme $e6
-  Parse valid base64-encoded configuration without credentials $e7
+  Parse valid base64-encoded configuration with roleArn $e7
   Parse valid load configuration with EC2-stored password and Role ARN $e8
+  Parse valid load without credentials $e9
   """
 
   val configUrl = getClass.getResource("/valid-config.json")
   val resolverUrl = getClass.getResource("/resolver.json")
 
+  val resolverBase64 = "eyJzY2hlbWEiOiJpZ2x1OmNvbS5zbm93cGxvd2FuYWx5dGljcy5pZ2x1L3Jlc29sdmVyLWNvbmZpZy9qc29uc2NoZW1hLzEtMC0xIiwiZGF0YSI6eyJjYWNoZVNpemUiOjUsInJlcG9zaXRvcmllcyI6W3sibmFtZSI6IklnbHUgQ2VudHJhbCBiYXNlNjQiLCJwcmlvcml0eSI6MCwidmVuZG9yUHJlZml4ZXMiOlsiY29tLnNub3dwbG93YW5hbHl0aWNzIl0sImNvbm5lY3Rpb24iOnsiaHR0cCI6eyJ1cmkiOiJodHRwOi8vaWdsdWNlbnRyYWwuY29tIn19fV19fQ=="
+  // 127.0.0.1:8888
+  // val resolverBase64 = "eyJzY2hlbWEiOiJpZ2x1OmNvbS5zbm93cGxvd2FuYWx5dGljcy5pZ2x1L3Jlc29sdmVyLWNvbmZpZy9qc29uc2NoZW1hLzEtMC0xIiwiZGF0YSI6eyJjYWNoZVNpemUiOjUsInJlcG9zaXRvcmllcyI6W3sibmFtZSI6IklnbHUgQ2VudHJhbCBiYXNlNjQiLCJwcmlvcml0eSI6MCwidmVuZG9yUHJlZml4ZXMiOlsiY29tLnNub3dwbG93YW5hbHl0aWNzIl0sImNvbm5lY3Rpb24iOnsiaHR0cCI6eyJ1cmkiOiJodHRwOi8vMTI3LjAuMC4xOjg4ODgifX19XX19"
+
+  val roleConfigUrl = getClass.getResource("/valid-config-role.json")
   val secureConfigUrl = getClass.getResource("/valid-config-secure.json")
+  val noauthConfigUrl = getClass.getResource("/valid-config-noauth.json")
 
   def e1 = {
     val args = List(
@@ -44,8 +51,10 @@ class ConfigSpec extends Specification { def is = s2"""
     val expected = CliLoaderConfiguration(
       Config.SetupCommand,
       Config(
-        accessKeyId = Some("ABCD"),
-        secretAccessKey = Some("abcd"),
+        auth = Config.CredentialsAuth(
+          accessKeyId = "ABCD",
+          secretAccessKey = "abcd"
+        ),
         awsRegion = "us-east-1",
         manifest = "snowflake-manifest",
         stage = "some_stage",
@@ -53,7 +62,6 @@ class ConfigSpec extends Specification { def is = s2"""
         snowflakeRegion = "us-west-1",
         username = "anton",
         password = Config.PlainText("Supersecret2"),
-        roleArn = None,
         input = s3("s3://snowflake/input/"),
         account = "snowplow",
         warehouse = "snowplow_wh",
@@ -75,10 +83,11 @@ class ConfigSpec extends Specification { def is = s2"""
     val expected = CliLoaderConfiguration(
       Config.LoadCommand,
       Config(
-        accessKeyId = Some("ABCD"),
-        secretAccessKey = Some("abcd"),
+        auth = Config.CredentialsAuth(
+          accessKeyId = "ABCD",
+          secretAccessKey = "abcd"
+        ),
         awsRegion = "us-east-1",
-
         manifest = "snowflake-manifest",
         stage = "some_stage",
         stageUrl = s3("s3://snowflake/output/"),
@@ -87,7 +96,6 @@ class ConfigSpec extends Specification { def is = s2"""
         schema = "atomic",
         username = "anton",
         password = Config.PlainText("Supersecret2"),
-        roleArn = None,
         account = "snowplow",
         warehouse = "snowplow_wh",
         database = "test_db"),
@@ -102,17 +110,18 @@ class ConfigSpec extends Specification { def is = s2"""
 
       "--dry-run",
       "--base64",
-      "--resolver", "eyJzY2hlbWEiOiJpZ2x1OmNvbS5zbm93cGxvd2FuYWx5dGljcy5pZ2x1L3Jlc29sdmVyLWNvbmZpZy9qc29uc2NoZW1hLzEtMC0xIiwiZGF0YSI6eyJjYWNoZVNpemUiOjUsInJlcG9zaXRvcmllcyI6W3sibmFtZSI6IklnbHUgQ2VudHJhbCBiYXNlNjQiLCJwcmlvcml0eSI6MCwidmVuZG9yUHJlZml4ZXMiOlsiY29tLnNub3dwbG93YW5hbHl0aWNzIl0sImNvbm5lY3Rpb24iOnsiaHR0cCI6eyJ1cmkiOiJodHRwOi8vaWdsdWNlbnRyYWwuY29tIn19fV19fQ==",
-      "--config", "eyAic2NoZW1hIjogImlnbHU6Y29tLnNub3dwbG93YW5hbHl0aWNzLnNub3dwbG93LnN0b3JhZ2Uvc25vd2ZsYWtlX2NvbmZpZy9qc29uc2NoZW1hLzEtMC0wIiwgImRhdGEiOiB7ICJuYW1lIjogIlNub3dmbGFrZSIsICJhY2Nlc3NLZXlJZCI6ICJBQkNEIiwgInNlY3JldEFjY2Vzc0tleSI6ICJhYmNkIiwgImF3c1JlZ2lvbiI6ICJ1cy1lYXN0LTEiLCAibWFuaWZlc3QiOiAic25vd2ZsYWtlLW1hbmlmZXN0IiwgInNub3dmbGFrZVJlZ2lvbiI6ICJ1cy13ZXN0LTEiLCAiZGF0YWJhc2UiOiAidGVzdF9kYiIsICJpbnB1dCI6ICJzMzovL3Nub3dmbGFrZS9pbnB1dC8iLCAic3RhZ2UiOiAic29tZV9zdGFnZSIsICJzdGFnZVVybCI6ICJzMzovL3Nub3dmbGFrZS9vdXRwdXQvIiwgIndhcmVob3VzZSI6ICJzbm93cGxvd193aCIsICJzY2hlbWEiOiAiYXRvbWljIiwgImFjY291bnQiOiAic25vd3Bsb3ciLCAidXNlcm5hbWUiOiAiYW50b24iLCAicGFzc3dvcmQiOiAiU3VwZXJzZWNyZXQyIiwgInB1cnBvc2UiOiAiRU5SSUNIRURfRVZFTlRTIiB9IH0="
+      "--resolver", resolverBase64,
+      "--config", "eyAic2NoZW1hIjogImlnbHU6Y29tLnNub3dwbG93YW5hbHl0aWNzLnNub3dwbG93LnN0b3JhZ2Uvc25vd2ZsYWtlX2NvbmZpZy9qc29uc2NoZW1hLzEtMC0wIiwgImRhdGEiOiB7ICJuYW1lIjogIlNub3dmbGFrZSBiYXNlNjQiLCAiYXV0aCI6IHsgImFjY2Vzc0tleUlkIjogIkFCQ0RBIiwgInNlY3JldEFjY2Vzc0tleSI6ICJhYmNkIiB9LCAiYXdzUmVnaW9uIjogInVzLWVhc3QtMSIsICJtYW5pZmVzdCI6ICJzbm93Zmxha2UtbWFuaWZlc3QiLCAic25vd2ZsYWtlUmVnaW9uIjogInVzLXdlc3QtMSIsICJkYXRhYmFzZSI6ICJ0ZXN0X2RiIiwgImlucHV0IjogInMzOi8vc25vd2ZsYWtlL2lucHV0LyIsICJzdGFnZSI6ICJzb21lX3N0YWdlIiwgInN0YWdlVXJsIjogInMzOi8vc25vd2ZsYWtlL291dHB1dC8iLCAid2FyZWhvdXNlIjogInNub3dwbG93X3doIiwgInNjaGVtYSI6ICJhdG9taWMiLCAiYWNjb3VudCI6ICJzbm93cGxvdyIsICJ1c2VybmFtZSI6ICJhbnRvbiIsICJwYXNzd29yZCI6ICJTdXBlcnNlY3JldDIiLCAicHVycG9zZSI6ICJFTlJJQ0hFRF9FVkVOVFMiIH0gfQ=="
     ).toArray
 
     val expected = CliLoaderConfiguration(
       Config.LoadCommand,
       Config(
-        accessKeyId =  Some("ABCD"),
-        secretAccessKey = Some("abcd"),
+        auth = Config.CredentialsAuth(
+          accessKeyId = "ABCDA",
+          secretAccessKey = "abcd"
+        ),
         awsRegion = "us-east-1",
-
         manifest = "snowflake-manifest",
         stage = "some_stage",
         stageUrl = s3("s3://snowflake/output/"),
@@ -120,7 +129,6 @@ class ConfigSpec extends Specification { def is = s2"""
         schema = "atomic",
         username = "anton",
         password = Config.PlainText("Supersecret2"),
-        roleArn = None,
         input = s3("s3://snowflake/input/"),
         account = "snowplow",
         warehouse = "snowplow_wh",
@@ -150,18 +158,19 @@ class ConfigSpec extends Specification { def is = s2"""
     val args = List(
       "setup",
 
-      "--resolver", "eyJzY2hlbWEiOiJpZ2x1OmNvbS5zbm93cGxvd2FuYWx5dGljcy5pZ2x1L3Jlc29sdmVyLWNvbmZpZy9qc29uc2NoZW1hLzEtMC0xIiwiZGF0YSI6eyJjYWNoZVNpemUiOjUsInJlcG9zaXRvcmllcyI6W3sibmFtZSI6IklnbHUgQ2VudHJhbCBiYXNlNjQiLCJwcmlvcml0eSI6MCwidmVuZG9yUHJlZml4ZXMiOlsiY29tLnNub3dwbG93YW5hbHl0aWNzIl0sImNvbm5lY3Rpb24iOnsiaHR0cCI6eyJ1cmkiOiJodHRwOi8vaWdsdWNlbnRyYWwuY29tIn19fV19fQ==",
-      "--config", "eyAic2NoZW1hIjogImlnbHU6Y29tLnNub3dwbG93YW5hbHl0aWNzLnNub3dwbG93LnN0b3JhZ2Uvc25vd2ZsYWtlX2NvbmZpZy9qc29uc2NoZW1hLzEtMC0wIiwgImRhdGEiOiB7ICJuYW1lIjogIlNub3dmbGFrZSIsICJhY2Nlc3NLZXlJZCI6IG51bGwsICJzZWNyZXRBY2Nlc3NLZXkiOiBudWxsLCAiYXdzUmVnaW9uIjogInVzLWVhc3QtMSIsICJtYW5pZmVzdCI6ICJzbm93Zmxha2UtbWFuaWZlc3QiLCAic25vd2ZsYWtlUmVnaW9uIjogInVzLXdlc3QtMSIsICJkYXRhYmFzZSI6ICJ0ZXN0X2RiIiwgImlucHV0IjogInMzOi8vc25vd2ZsYWtlL2lucHV0LyIsICJzdGFnZSI6ICJzb21lX3N0YWdlIiwgInN0YWdlVXJsIjogInMzOi8vc25vd2ZsYWtlL291dHB1dC8iLCAid2FyZWhvdXNlIjogInNub3dwbG93X3doIiwgInNjaGVtYSI6ICJhdG9taWMiLCAiYWNjb3VudCI6ICJzbm93cGxvdyIsICJ1c2VybmFtZSI6ICJhbnRvbiIsICJwYXNzd29yZCI6ICJTdXBlcnNlY3JldDIiLCAicHVycG9zZSI6ICJFTlJJQ0hFRF9FVkVOVFMiIH0gfQ==",
+      "--resolver", resolverBase64,
+      "--config", "eyAic2NoZW1hIjogImlnbHU6Y29tLnNub3dwbG93YW5hbHl0aWNzLnNub3dwbG93LnN0b3JhZ2Uvc25vd2ZsYWtlX2NvbmZpZy9qc29uc2NoZW1hLzEtMC0wIiwgImRhdGEiOiB7ICJuYW1lIjogIlNub3dmbGFrZSIsICJhdXRoIjogeyJyb2xlQXJuIjogImFybjphd3M6aWFtOjo3MTkxOTc0MzU5OTU6cm9sZS9Tbm93Zmxha2VSb2xlIiwgInNlc3Npb25EdXJhdGlvbiI6IDkwMH0sICJhd3NSZWdpb24iOiAidXMtZWFzdC0xIiwgIm1hbmlmZXN0IjogInNub3dmbGFrZS1tYW5pZmVzdCIsICJzbm93Zmxha2VSZWdpb24iOiAidXMtd2VzdC0xIiwgImRhdGFiYXNlIjogInRlc3RfZGIiLCAiaW5wdXQiOiAiczM6Ly9zbm93Zmxha2UvaW5wdXQvIiwgInN0YWdlIjogInNvbWVfc3RhZ2UiLCAic3RhZ2VVcmwiOiAiczM6Ly9zbm93Zmxha2Uvb3V0cHV0LyIsICJ3YXJlaG91c2UiOiAic25vd3Bsb3dfd2giLCAic2NoZW1hIjogImF0b21pYyIsICJhY2NvdW50IjogInNub3dwbG93IiwgInVzZXJuYW1lIjogImFudG9uIiwgInBhc3N3b3JkIjogIlN1cGVyc2VjcmV0MiIsICJwdXJwb3NlIjogIkVOUklDSEVEX0VWRU5UUyIgfSB9",
       "--base64"
     ).toArray
 
     val expected = CliLoaderConfiguration(
       Config.SetupCommand,
       Config(
-        accessKeyId =  None,
-        secretAccessKey = None,
+        auth = Config.RoleAuth(
+          roleArn = "arn:aws:iam::719197435995:role/SnowflakeRole",
+          sessionDuration = 900
+        ),
         awsRegion = "us-east-1",
-
         manifest = "snowflake-manifest",
         stage = "some_stage",
         stageUrl = s3("s3://snowflake/output/"),
@@ -169,7 +178,6 @@ class ConfigSpec extends Specification { def is = s2"""
         schema = "atomic",
         username = "anton",
         password = Config.PlainText("Supersecret2"),
-        roleArn = None,
         input = s3("s3://snowflake/input/"),
         account = "snowplow",
         warehouse = "snowplow_wh",
@@ -190,10 +198,11 @@ class ConfigSpec extends Specification { def is = s2"""
     val expected = CliLoaderConfiguration(
       Config.LoadCommand,
       Config(
-        accessKeyId = Some("ABCD"),
-        secretAccessKey = Some("abcd"),
+        auth = Config.RoleAuth(
+          roleArn = "arn:aws:iam::111222333444:role/SnowflakeLoadRole",
+          sessionDuration = 900
+        ),
         awsRegion = "us-east-1",
-
         manifest = "snowflake-manifest",
         stage = "some_stage",
         stageUrl = s3("s3://snowflake/output/"),
@@ -204,7 +213,37 @@ class ConfigSpec extends Specification { def is = s2"""
         password = Config.EncryptedKey(
           Config.EncryptedConfig(
             Config.ParameterStoreConfig("snowplow.snowflakeloader.snowflake.password"))),
-        roleArn = Some("arn:aws:iam::111222333444:role/SnowflakeLoadRole"),
+        account = "snowplow",
+        warehouse = "snowplow_wh",
+        database = "test_db"),
+      true)
+
+    Config.parseLoaderCli(args) must beSome(Right(expected))
+  }
+
+  def e9 = {
+    val args = List(
+      "load",
+
+      "--dry-run",
+      "--resolver", s"${resolverUrl.getPath}",
+      "--config", s"${noauthConfigUrl.getPath}").toArray
+
+    val expected = CliLoaderConfiguration(
+      Config.LoadCommand,
+      Config(
+        auth = Config.StageAuth,
+        awsRegion = "us-east-1",
+        manifest = "snowflake-manifest",
+        stage = "some_stage",
+        stageUrl = s3("s3://snowflake/output/"),
+        snowflakeRegion = "us-west-1",
+        input = s3("s3://snowflake/input/"),
+        schema = "atomic",
+        username = "anton",
+        password = Config.EncryptedKey(
+          Config.EncryptedConfig(
+            Config.ParameterStoreConfig("snowplow.snowflakeloader.snowflake.password"))),
         account = "snowplow",
         warehouse = "snowplow_wh",
         database = "test_db"),
