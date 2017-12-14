@@ -34,8 +34,18 @@ object Jdbc extends Connection[JdbcConnection] {
     // Build connection properties
     val properties = new Properties()
 
+    val password = config.password match {
+      case Config.PlainText(text) => text
+      case Config.EncryptedKey(Config.EncryptedConfig(key)) =>
+        PasswordService.getKey(key.parameterName) match {
+          case Right(result) => result
+          case Left(error) =>
+            throw new RuntimeException(s"Cannot retrieve JDBC password from EC2 Parameter Store. $error")
+        }
+    }
+
     properties.put("user", config.username)
-    properties.put("password", config.password)
+    properties.put("password", password)
     properties.put("account", config.account)
     properties.put("warehouse", config.warehouse)
     properties.put("db", config.database)
