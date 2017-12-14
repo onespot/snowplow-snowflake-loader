@@ -30,10 +30,6 @@ class AtomicDefSpec  extends Specification { def is = s2"""
     val resultLines = AtomicDef.getTable().getStatement.value.split("\n").toList
     val result = normalizeSql(resultLines)
 
-    println(result.mkString("\n"))
-    println("\n\n\n\n")
-    println(expected.mkString("\n"))
-
     result must beEqualTo(expected)
   }
 }

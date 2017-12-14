@@ -21,8 +21,7 @@ import com.snowplowanalytics.iglu.client.Resolver
 import com.snowplowanalytics.iglu.client.validation.ValidatableJValue.validate
 import com.snowplowanalytics.snowflake.generated.ProjectMetadata
 
-import org.json4s.JsonAST.JString
-import org.json4s.{CustomSerializer, JValue, MappingException}
+import org.json4s.{CustomSerializer, JValue, JString, JObject, MappingException}
 import org.json4s.jackson.JsonMethods.parse
 
 import scala.io.Source
@@ -40,7 +39,8 @@ case class Config(
   stageUrl: Config.S3Folder,
   input: Config.S3Folder,
   username: String,
-  password: String,
+  password: Config.PasswordConfig,
+  roleArn: Option[String],
   account: String,
   warehouse: String,
   database: String,
@@ -48,8 +48,6 @@ case class Config(
 )
 
 object Config {
-
-  implicit val formats = org.json4s.DefaultFormats + s3FolderSerializer
 
   sealed trait Command
   case object LoadCommand extends Command
@@ -60,6 +58,34 @@ object Config {
 
   case class RawCliTransformer(loaderConfig: String, resolver: String)
   case class CliTransformerConfiguration(loaderConfig: Config)
+
+  /** Reference to encrypted entity inside EC2 Parameter Store */
+  case class ParameterStoreConfig(parameterName: String)
+
+  /** Reference to encrypted key (EC2 Parameter Store only so far) */
+  case class EncryptedConfig(ec2ParameterStore: ParameterStoreConfig)
+
+  sealed trait PasswordConfig {
+    def getUnencrypted: String = this match {
+      case PlainText(plain) => plain
+      case EncryptedKey(EncryptedConfig(key)) => key.parameterName
+    }
+  }
+  case class PlainText(value: String) extends PasswordConfig
+  case class EncryptedKey(value: EncryptedConfig) extends PasswordConfig
+
+  object PasswordSerializer extends CustomSerializer[PasswordConfig](_ => ({
+    case JString(plain) => PlainText(plain)
+    case JObject(List(("ec2ParameterStore", JObject(List(("parameterName", JString(parameter))))))) =>
+      EncryptedKey(EncryptedConfig(ParameterStoreConfig(parameter)))
+  },
+  {
+    case PlainText(plain) => JString(plain)
+    case EncryptedKey(EncryptedConfig(ParameterStoreConfig(parameter))) =>
+      parse(s"""{"ec2ParameterStore": {"parameterName":"$parameter"}}""")
+  }))
+
+  implicit val formats = org.json4s.DefaultFormats + s3FolderSerializer + PasswordSerializer
 
   /** Parse and validate Snowflake Loader configuration out of CLI args */
   def parseLoaderCli(args: Array[String]): Option[Either[String, CliLoaderConfiguration]] =

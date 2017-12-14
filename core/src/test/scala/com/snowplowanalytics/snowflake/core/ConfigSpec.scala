@@ -21,15 +21,17 @@ class ConfigSpec extends Specification { def is = s2"""
   Parse valid setup configuration $e1
   Parse valid load configuration $e2
   Parse valid base64-encoded configuration $e3
-
   Parse valid S3 without trailing slash $e4
   Parse valid S3 with trailing slash and s3n scheme $e5
   Fail to parse invalid scheme $e6
   Parse valid base64-encoded configuration without credentials $e7
+  Parse valid load configuration with EC2-stored password and Role ARN $e8
   """
 
   val configUrl = getClass.getResource("/valid-config.json")
   val resolverUrl = getClass.getResource("/resolver.json")
+
+  val secureConfigUrl = getClass.getResource("/valid-config-secure.json")
 
   def e1 = {
     val args = List(
@@ -50,7 +52,8 @@ class ConfigSpec extends Specification { def is = s2"""
         stageUrl = s3("s3://snowflake/output/"),
         snowflakeRegion = "us-west-1",
         username = "anton",
-        password = "Supersecret2",
+        password = Config.PlainText("Supersecret2"),
+        roleArn = None,
         input = s3("s3://snowflake/input/"),
         account = "snowplow",
         warehouse = "snowplow_wh",
@@ -83,7 +86,8 @@ class ConfigSpec extends Specification { def is = s2"""
         input = s3("s3://snowflake/input/"),
         schema = "atomic",
         username = "anton",
-        password = "Supersecret2",
+        password = Config.PlainText("Supersecret2"),
+        roleArn = None,
         account = "snowplow",
         warehouse = "snowplow_wh",
         database = "test_db"),
@@ -115,7 +119,8 @@ class ConfigSpec extends Specification { def is = s2"""
         snowflakeRegion = "us-west-1",
         schema = "atomic",
         username = "anton",
-        password = "Supersecret2",
+        password = Config.PlainText("Supersecret2"),
+        roleArn = None,
         input = s3("s3://snowflake/input/"),
         account = "snowplow",
         warehouse = "snowplow_wh",
@@ -163,12 +168,47 @@ class ConfigSpec extends Specification { def is = s2"""
         snowflakeRegion = "us-west-1",
         schema = "atomic",
         username = "anton",
-        password = "Supersecret2",
+        password = Config.PlainText("Supersecret2"),
+        roleArn = None,
         input = s3("s3://snowflake/input/"),
         account = "snowplow",
         warehouse = "snowplow_wh",
         database = "test_db"),
       false)
+
+    Config.parseLoaderCli(args) must beSome(Right(expected))
+  }
+
+  def e8 = {
+    val args = List(
+      "load",
+
+      "--dry-run",
+      "--resolver", s"${resolverUrl.getPath}",
+      "--config", s"${secureConfigUrl.getPath}").toArray
+
+    val expected = CliLoaderConfiguration(
+      Config.LoadCommand,
+      Config(
+        accessKeyId = Some("ABCD"),
+        secretAccessKey = Some("abcd"),
+        awsRegion = "us-east-1",
+
+        manifest = "snowflake-manifest",
+        stage = "some_stage",
+        stageUrl = s3("s3://snowflake/output/"),
+        snowflakeRegion = "us-west-1",
+        input = s3("s3://snowflake/input/"),
+        schema = "atomic",
+        username = "anton",
+        password = Config.EncryptedKey(
+          Config.EncryptedConfig(
+            Config.ParameterStoreConfig("snowplow.snowflakeloader.snowflake.password"))),
+        roleArn = Some("arn:aws:iam::111222333444:role/SnowflakeLoadRole"),
+        account = "snowplow",
+        warehouse = "snowplow_wh",
+        database = "test_db"),
+      true)
 
     Config.parseLoaderCli(args) must beSome(Right(expected))
   }
