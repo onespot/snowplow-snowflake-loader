@@ -1,33 +1,30 @@
 /*
- * PROPRIETARY AND CONFIDENTIAL
- *
- * Unauthorized copying of this project via any medium is strictly prohibited.
- *
  * Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
+ *
+ * This program is licensed to you under the Apache License Version 2.0,
+ * and you may not use this file except in compliance with the Apache License Version 2.0.
+ * You may obtain a copy of the Apache License Version 2.0 at http://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the Apache License Version 2.0 is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
  */
 package com.snowplowanalytics.snowflake.transformer
 
-import org.apache.spark.{SparkConf, SparkContext}
-
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
+import org.apache.spark.SparkContext
 
 import com.snowplowanalytics.snowflake.core.ProcessManifest
 
 object TransformerJob {
 
   /** Process all directories, saving state into DynamoDB */
-  def run(dynamoDB: AmazonDynamoDB, tableName: String, jobConfigs: List[TransformerJobConfig]): Unit = {
-    val config = new SparkConf()
-      .setAppName("snowflake-transformer")
-      .setIfMissing("spark.master", "local[*]")
-
-    val sc = new SparkContext(config)
-
+  def run(sc: SparkContext, manifest: ProcessManifest, tableName: String, jobConfigs: List[TransformerJobConfig]): Unit = {
     jobConfigs.foreach { jobConfig =>
       println(s"Snowflake Transformer: processing ${jobConfig.runId}. ${System.currentTimeMillis()}")
-      ProcessManifest.add(dynamoDB, tableName, jobConfig.runId)
+      manifest.add(tableName, jobConfig.runId)
       val shredTypes = process(sc, jobConfig)
-      ProcessManifest.markProcessed(dynamoDB, tableName, jobConfig.runId, shredTypes, jobConfig.output)
+      manifest.markProcessed(tableName, jobConfig.runId, shredTypes, jobConfig.output)
       println(s"Snowflake Transformer: processed ${jobConfig.runId}. ${System.currentTimeMillis()}")
     }
   }

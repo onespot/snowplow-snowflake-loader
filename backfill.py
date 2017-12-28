@@ -56,7 +56,7 @@ def should_skip(run_id, startdate):
 
 
 def add(dynamodb, table_name, run_id):
-    """Adds run id to manifest in strawberry-compatible way"""
+    """Adds run id to manifest in snowflake-compatible way"""
     dynamodb.put_item(
         TableName=table_name,
         Item={
@@ -79,7 +79,7 @@ def add(dynamodb, table_name, run_id):
 if __name__ == "__main__":
     # Initialize
 
-    parser = argparse.ArgumentParser(description='Backfill strawberry run manifest')
+    parser = argparse.ArgumentParser(description='Backfill snowflake-loader run manifest')
 
     parser.add_argument('--aws-access-key-id', type=str, required=True,
                         help="AWS access key id DynamoDB and S3")

@@ -10,20 +10,20 @@
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
  */
-package com.snowplowanalytics.snowflake.loader.ast
+package com.snowplowanalytics.snowflake.loader
+package connection
 
-sealed trait SnowflakeDatatype
+import ast._
+import com.snowplowanalytics.snowflake.core.Config
 
-object SnowflakeDatatype {
-  case class Varchar(size: Int) extends SnowflakeDatatype
-  case object Timestamp extends SnowflakeDatatype
-  case class Char(size: Int) extends SnowflakeDatatype
-  case object SmallInt extends SnowflakeDatatype
-  case object DoublePrecision extends SnowflakeDatatype
-  case object Integer extends SnowflakeDatatype
-  case class Number(precision: Int, scale: Int) extends SnowflakeDatatype
-  case object Boolean extends SnowflakeDatatype
-  case object Variant extends SnowflakeDatatype
-  case object JsonObject extends SnowflakeDatatype
-  case object JsonArray extends SnowflakeDatatype
+// TODO: rewrite as type-class
+/** DB-connection adapter */
+trait Connection[C] {
+  def getConnection(config: Config): C
+  def execute[S: Statement](connection: C, ast: S): Unit
+  def startTransaction(connection: C, name: Option[String]): Unit
+  def commitTransaction(connection: C): Unit
+  def rollbackTransaction(connection: C): Unit
+  def executeAndOutput[S: Statement](connection: C, ast: S): Unit
+  def executeAndCountRows[S: Statement](connection: C, ast: S): Int
 }

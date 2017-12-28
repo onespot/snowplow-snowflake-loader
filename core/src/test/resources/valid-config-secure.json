@@ -1,0 +1,27 @@
+{
+  "schema": "iglu:com.snowplowanalytics.snowplow.storage/snowflake_config/jsonschema/1-0-0",
+  "data": {
+    "name": "Snowflake",
+    "auth": {
+      "roleArn": "arn:aws:iam::111222333444:role/SnowflakeLoadRole",
+      "sessionDuration": 900
+    },
+    "awsRegion": "us-east-1",
+    "manifest": "snowflake-manifest",
+    "snowflakeRegion": "us-west-1",
+    "database": "test_db",
+    "input": "s3://snowflake/input/",
+    "stage": "some_stage",
+    "stageUrl": "s3://snowflake/output/",
+    "warehouse": "snowplow_wh",
+    "schema": "atomic",
+    "account": "snowplow",
+    "username": "anton",
+    "password": {
+      "ec2ParameterStore": {
+        "parameterName": "snowplow.snowflakeloader.snowflake.password"
+      }
+    },
+    "purpose": "ENRICHED_EVENTS"
+  }
+}
