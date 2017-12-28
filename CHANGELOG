@@ -14,6 +14,7 @@ Bump Snowflake JDBC driver to 3.3.2 (#29)
 Bump Scala Analytics SDK to 0.2.1 (#27)
 Bump AWS SDK to 1.11.208 (#26)
 Make SparkContext initializing eagerly (#24)
+Re-encrypt AWS credentials in .travis.yml (#40)
 
 Version 0.2.0 (2017-10-05)
 --------------------------
