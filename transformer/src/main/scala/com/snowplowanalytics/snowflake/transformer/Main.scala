@@ -1,30 +1,44 @@
 /*
- * PROPRIETARY AND CONFIDENTIAL
- *
- * Unauthorized copying of this project via any medium is strictly prohibited.
- *
  * Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
+ *
+ * This program is licensed to you under the Apache License Version 2.0,
+ * and you may not use this file except in compliance with the Apache License Version 2.0.
+ * You may obtain a copy of the Apache License Version 2.0 at http://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the Apache License Version 2.0 is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
  */
 package com.snowplowanalytics.snowflake.transformer
 
-import com.snowplowanalytics.snowflake.core.ProcessManifest
+import org.apache.spark.{SparkConf, SparkContext}
+import com.snowplowanalytics.snowflake.core.{ ProcessManifest, Config }
 
 
 object Main {
   def main(args: Array[String]): Unit = {
-    TransformerConfig.parse(args) match {
-      case Some(Right(appConfig)) =>
+    Config.parseTransformerCli(args) match {
+      case Some(Right(Config.CliTransformerConfiguration(appConfig))) =>
 
-        val s3 = ProcessManifest.getS3(appConfig.awsAccessKey, appConfig.awsSecretKey, appConfig.awsRegion)
-        val dynamoDb = ProcessManifest.getDynamoDb(appConfig.awsAccessKey, appConfig.awsSecretKey, appConfig.awsRegion)
+        // Always use EMR Role role for manifest-access
+        val s3 = ProcessManifest.getS3(appConfig.awsRegion)
+        val dynamoDb = ProcessManifest.getDynamoDb(appConfig.awsRegion)
+        val manifest = ProcessManifest.AwsProcessingManifest(s3, dynamoDb)
+
+        // Eager SparkContext initializing to avoid YARN timeout
+        val config = new SparkConf()
+          .setAppName("snowflake-transformer")
+          .setIfMissing("spark.master", "local[*]")
+        val sc = new SparkContext(config)
 
         // Get run folders that are not in RunManifest in any form
-        val runFolders = ProcessManifest.getUnprocessed(s3, dynamoDb, appConfig.manifestTable, appConfig.enrichedInput)
+        val runFolders = manifest.getUnprocessed(appConfig.manifest, appConfig.input)
 
         runFolders match {
           case Right(folders) =>
-            val configs = folders.map(TransformerJobConfig(appConfig.enrichedInput, appConfig.enrichedOutput, _))
-            TransformerJob.run(dynamoDb, appConfig.manifestTable, configs)
+            val configs = folders.map(TransformerJobConfig(appConfig.input, appConfig.stageUrl, _))
+            TransformerJob.run(sc, manifest, appConfig.manifest, configs)
           case Left(error) =>
             println("Cannot get list of unprocessed folders")
             println(error)

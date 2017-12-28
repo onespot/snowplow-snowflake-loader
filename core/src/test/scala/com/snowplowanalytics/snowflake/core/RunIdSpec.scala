@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
+ *
+ * This program is licensed to you under the Apache License Version 2.0,
+ * and you may not use this file except in compliance with the Apache License Version 2.0.
+ * You may obtain a copy of the Apache License Version 2.0 at http://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the Apache License Version 2.0 is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
+ */
 package com.snowplowanalytics.snowflake.core
 
 import collection.mutable
@@ -9,6 +21,7 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue
 import org.joda.time.{ DateTime, DateTimeZone }
 
 import com.snowplowanalytics.snowflake.core.RunId._
+import com.snowplowanalytics.snowflake.core.Config.S3Folder.{coerce => s3}
 
 class RunIdSpec extends Specification { def is = s2"""
   Parse valid FreshRunId $e2
@@ -51,7 +64,7 @@ class RunIdSpec extends Specification { def is = s2"""
       new DateTime(1502357136000L).withZone(DateTimeZone.UTC),
       new DateTime(1502368136000L).withZone(DateTimeZone.UTC),
       List("unstruct_event_com_acme_event_1", "contexts_com_acme_context_1"),
-      "s3://bucket/output/archived/run-01/",
+      s3("s3://bucket/output/archived/run-01/"),
       "some-transformer",
       false)
     )
@@ -79,7 +92,7 @@ class RunIdSpec extends Specification { def is = s2"""
       new DateTime(1502357136000L).withZone(DateTimeZone.UTC),
       new DateTime(1502368136000L).withZone(DateTimeZone.UTC),
       List("unstruct_event_com_acme_event_1", "contexts_com_acme_context_1"),
-      "s3://bucket/output/archived/run-01/",
+      s3("s3://bucket/output/archived/run-01/"),
       new DateTime(1502398136000L).withZone(DateTimeZone.UTC),
       "some-transformer",
       "loader"))

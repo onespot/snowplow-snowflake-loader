@@ -1,9 +1,14 @@
 /*
- * PROPRIETARY AND CONFIDENTIAL
- *
- * Unauthorized copying of this project via any medium is strictly prohibited.
- *
  * Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
+ *
+ * This program is licensed to you under the Apache License Version 2.0,
+ * and you may not use this file except in compliance with the Apache License Version 2.0.
+ * You may obtain a copy of the Apache License Version 2.0 at http://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the Apache License Version 2.0 is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
  */
 package com.snowplowanalytics.snowflake.loader.ast
 
@@ -19,15 +24,14 @@ object Statement {
 
   implicit object CreateTableStatement extends Statement[CreateTable] {
     def getStatement(ddl: CreateTable): SqlStatement = {
-      val longest = ddl.columns.map(_.name.length).maximumOption.getOrElse(1)
-      val constraint = ddl.primaryKey.map { p => ",\n\n  " + p.show }.getOrElse("")
+      val constraint = ddl.primaryKey.map { p => ", " + p.show }.getOrElse("")
       val cols = ddl.columns.map(_.show).map(_.split(" ").toList).map {
-        case columnName :: tail => columnName + " " * (longest + 1 - columnName.length) + tail.mkString(" ")
+        case columnName :: tail => columnName + " " + tail.mkString(" ")
         case other => other.mkString(" ")
       }
       val temporary = if (ddl.temporary) " TEMPORARY " else " "
-      SqlStatement(s"CREATE${temporary}TABLE IF NOT EXISTS ${ddl.schema}.${ddl.name} (\n" +
-        cols.map("  " + _).mkString(",\n") + constraint + "\n)"
+      SqlStatement(s"CREATE${temporary}TABLE IF NOT EXISTS ${ddl.schema}.${ddl.name} (" +
+        cols.mkString(", ") + constraint + ")"
       )
     }
   }
@@ -50,8 +54,15 @@ object Statement {
 
   implicit object CreateStageStatement extends Statement[CreateStage] {
     def getStatement(ddl: CreateStage): SqlStatement = {
+      val credentials = ddl.credentials match {
+        case Some(c) if c.sessionToken.isDefined =>
+          System.err.println("AWS_TOKEN (temporary credentials) must never be used for stages. Skipping credentials")
+          None
+        case Some(c) => s" CREDENTIALS = (AWS_KEY_ID = '${c.awsAccessKeyId}' AWS_SECRET_KEY = '${c.awsSecretKey}')"
+        case None => ""  // Expect credentials are available in stage
+      }
       SqlStatement(
-        s"CREATE STAGE IF NOT EXISTS ${ddl.schema}.${ddl.name} URL = '${ddl.url}' FILE_FORMAT = ${ddl.fileFormat}"
+        s"CREATE STAGE IF NOT EXISTS ${ddl.schema}.${ddl.name} URL = '${ddl.url}' FILE_FORMAT = ${ddl.fileFormat}$credentials"
       )
     }
   }
@@ -97,45 +108,58 @@ object Statement {
   }
 
   implicit object CopyInto extends Statement[CopyInto] {
-    def getStatement(ast: CopyInto): SqlStatement =
-      SqlStatement(s"COPY INTO ${ast.schema}.${ast.table}(${ast.columns.mkString(",")}) FROM @${ast.from.schema}.${ast.from.stageName}/${ast.from.path} CREDENTIALS = (AWS_KEY_ID = '${ast.credentials.awsAccessKeyId}' AWS_SECRET_KEY = '${ast.credentials.awsSecretKey}') FILE_FORMAT = (FORMAT_NAME = '${ast.fileFormat.schema}.${ast.fileFormat.formatName}')" )
+    def getStatement(ast: CopyInto): SqlStatement = {
+      val credentials = ast.credentials match {
+        case Some(c) =>
+          val token = c.sessionToken match {
+            case None => ""
+            case Some(t) => s" AWS_TOKEN = '$t'"
+          }
+          s" CREDENTIALS = (AWS_KEY_ID = '${c.awsAccessKeyId}' AWS_SECRET_KEY = '${c.awsSecretKey}'$token)"
+        case None => ""  // Expect credentials are available in stage
+      }
+      val stripNulls = if (ast.stripNullValues) " STRIP_NULL_VALUES = TRUE"
+      else ""
+      SqlStatement(s"COPY INTO ${ast.schema}.${ast.table}(${ast.columns.mkString(",")}) FROM @${ast.from.schema}.${ast.from.stageName}/${ast.from.path}$credentials FILE_FORMAT = (FORMAT_NAME = '${ast.fileFormat.schema}.${ast.fileFormat.formatName}'$stripNulls)" )
+
+    }
   }
 
   implicit object ShowStageStatement extends Statement[Show.ShowStages] {
     def getStatement(ast: Show.ShowStages): SqlStatement = {
       val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
-      val scopePattern = ast.schema.map(s => s"IN $s").getOrElse("")
-      SqlStatement(s"SHOW stages $schemaPattern$scopePattern")
+      val scopePattern = ast.schema.map(s => s" IN $s").getOrElse("")
+      SqlStatement(s"SHOW stages$schemaPattern$scopePattern")
     }
   }
 
   implicit object ShowSchemasStatement extends Statement[Show.ShowSchemas] {
     def getStatement(ast: Show.ShowSchemas): SqlStatement = {
       val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
-      SqlStatement(s"SHOW schemas $schemaPattern")
+      SqlStatement(s"SHOW schemas$schemaPattern")
     }
   }
 
   implicit object ShowTablesStatement extends Statement[Show.ShowTables] {
     def getStatement(ast: Show.ShowTables): SqlStatement = {
       val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
-      val scopePattern = ast.schema.map(s => s"IN $s").getOrElse("")
-      SqlStatement(s"SHOW tables $schemaPattern$scopePattern")
+      val scopePattern = ast.schema.map(s => s" IN $s").getOrElse("")
+      SqlStatement(s"SHOW tables$schemaPattern$scopePattern")
     }
   }
 
   implicit object ShowFileFormatsStatement extends Statement[Show.ShowFileFormats] {
     def getStatement(ast: Show.ShowFileFormats): SqlStatement = {
       val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
-      val scopePattern = ast.schema.map(s => s"IN $s").getOrElse("")
-      SqlStatement(s"SHOW file formats $schemaPattern$scopePattern")
+      val scopePattern = ast.schema.map(s => s" IN $s").getOrElse("")
+      SqlStatement(s"SHOW file formats$schemaPattern$scopePattern")
     }
   }
 
   implicit object ShowWarehousesStatement extends Statement[Show.ShowWarehouses] {
     def getStatement(ast: Show.ShowWarehouses): SqlStatement = {
       val schemaPattern = ast.pattern.map(s => s" LIKE '$s'").getOrElse("")
-      SqlStatement(s"SHOW warehouses $schemaPattern")
+      SqlStatement(s"SHOW warehouses$schemaPattern")
     }
   }
 }

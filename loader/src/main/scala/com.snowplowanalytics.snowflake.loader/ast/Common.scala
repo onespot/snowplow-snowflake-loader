@@ -12,18 +12,6 @@
  */
 package com.snowplowanalytics.snowflake.loader.ast
 
-sealed trait SnowflakeDatatype
-
-object SnowflakeDatatype {
-  case class Varchar(size: Int) extends SnowflakeDatatype
-  case object Timestamp extends SnowflakeDatatype
-  case class Char(size: Int) extends SnowflakeDatatype
-  case object SmallInt extends SnowflakeDatatype
-  case object DoublePrecision extends SnowflakeDatatype
-  case object Integer extends SnowflakeDatatype
-  case class Number(precision: Int, scale: Int) extends SnowflakeDatatype
-  case object Boolean extends SnowflakeDatatype
-  case object Variant extends SnowflakeDatatype
-  case object JsonObject extends SnowflakeDatatype
-  case object JsonArray extends SnowflakeDatatype
+object Common {
+  case class AwsCreds(awsAccessKeyId: String, awsSecretKey: String, sessionToken: Option[String])
 }

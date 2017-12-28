@@ -1,18 +1,29 @@
 /*
- * PROPRIETARY AND CONFIDENTIAL
- *
- * Unauthorized copying of this project via any medium is strictly prohibited.
- *
  * Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
+ *
+ * This program is licensed to you under the Apache License Version 2.0,
+ * and you may not use this file except in compliance with the Apache License Version 2.0.
+ * You may obtain a copy of the Apache License Version 2.0 at http://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the Apache License Version 2.0 is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
  */
 package com.snowplowanalytics.snowflake.loader.ast
 
 import org.specs2.Specification
 
+import com.snowplowanalytics.snowflake.core.Config
+
 class StatementSpec extends Specification { def is = s2"""
   Transform CREATE TABLE AST into String $e1
   Transform COPY INTO AST into String $e2
   Transform INSERT INTO AST into String $e3
+  Transform SHOW into String $e4
+  Transform COPY INTO AST (without credentials) into String $e5
+  Transform CREATE STAGE AST into String $e6
+  Transform COPY INTO AST (with stripping nulls) into String $e7
   """
 
   def e1 = {
@@ -25,12 +36,7 @@ class StatementSpec extends Specification { def is = s2"""
 
     val result = input.getStatement.value
     val expected =
-      """|CREATE TABLE IF NOT EXISTS nonatomic.data (
-         |  id               NUMBER(2,6) NOT NULL,
-         |  foo              VARCHAR(128) UNIQUE,
-         |  long_column_name DOUBLE PRECISION NOT NULL UNIQUE,
-         |  baz              VARIANT
-         |)""".stripMargin
+      """CREATE TABLE IF NOT EXISTS nonatomic.data (id NUMBER(2,6) NOT NULL, foo VARCHAR(128) UNIQUE, long_column_name DOUBLE PRECISION NOT NULL UNIQUE, baz VARIANT)"""
 
     result must beEqualTo(expected)
   }
@@ -42,8 +48,9 @@ class StatementSpec extends Specification { def is = s2"""
       "some_table",
       columns,
       CopyInto.From("other_schema", "stage_name", "path/to/dir"),
-      CopyInto.AwsCreds("AAA", "xyz"),
-      CopyInto.FileFormat("third_schema", "format_name"))
+      Some(Common.AwsCreds("AAA", "xyz", None)),
+      CopyInto.FileFormat("third_schema", "format_name"),
+      false)
 
     val result = input.getStatement.value
     val expected = "COPY INTO some_schema.some_table(id,foo,fp_id,json) " +
@@ -68,6 +75,60 @@ class StatementSpec extends Specification { def is = s2"""
       "FROM some_schema.tmp_table"
 
     result must beEqualTo(expected)
+  }
 
+  def e4 = {
+    val ast = Show.ShowStages(Some("s3://archive"), Some("atomic"))
+    val result = ast.getStatement.value
+    val expected = "SHOW stages LIKE 's3://archive' IN atomic"
+    result must beEqualTo(expected)
+  }
+
+  def e5 = {
+    val columns = List("id", "foo", "fp_id", "json")
+    val input = CopyInto(
+      "some_schema",
+      "some_table",
+      columns,
+      CopyInto.From("other_schema", "stage_name", "path/to/dir"),
+      None,
+      CopyInto.FileFormat("third_schema", "format_name"),
+      false)
+
+    val result = input.getStatement.value
+    val expected = "COPY INTO some_schema.some_table(id,foo,fp_id,json) " +
+      "FROM @other_schema.stage_name/path/to/dir " +
+      "FILE_FORMAT = (FORMAT_NAME = 'third_schema.format_name')"
+
+    result must beEqualTo(expected)
+  }
+
+  def e6 = {
+    val statement = CreateStage("snowplow_stage", Config.S3Folder.coerce("s3://cross-batch"), "JSON", "atomic", Some(Common.AwsCreds("ACCESS", "secret", None)))
+
+    val result = statement.getStatement.value
+    val expected = "CREATE STAGE IF NOT EXISTS atomic.snowplow_stage URL = 's3://cross-batch/' FILE_FORMAT = JSON CREDENTIALS = (AWS_KEY_ID = 'ACCESS' AWS_SECRET_KEY = 'secret')"
+
+    result must beEqualTo(expected)
+  }
+
+  def e7 = {
+    val columns = List("id", "foo", "fp_id", "json")
+    val input = CopyInto(
+      "some_schema",
+      "some_table",
+      columns,
+      CopyInto.From("other_schema", "stage_name", "path/to/dir"),
+      None,
+      CopyInto.FileFormat("third_schema", "format_name"),
+      true)
+
+    val result = input.getStatement.value
+    val expected = "COPY INTO some_schema.some_table(id,foo,fp_id,json) " +
+      "FROM @other_schema.stage_name/path/to/dir " +
+      "FILE_FORMAT = (FORMAT_NAME = 'third_schema.format_name' " +
+      "STRIP_NULL_VALUES = TRUE)"
+
+    result must beEqualTo(expected)
   }
 }

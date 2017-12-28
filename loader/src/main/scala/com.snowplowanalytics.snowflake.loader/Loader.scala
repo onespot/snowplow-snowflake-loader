@@ -1,59 +1,61 @@
 /*
- * PROPRIETARY AND CONFIDENTIAL
- *
- * Unauthorized copying of this project via any medium is strictly prohibited.
- *
  * Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
+ *
+ * This program is licensed to you under the Apache License Version 2.0,
+ * and you may not use this file except in compliance with the Apache License Version 2.0.
+ * You may obtain a copy of the Apache License Version 2.0 at http://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the Apache License Version 2.0 is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the Apache License Version 2.0 for the specific language governing permissions and limitations there under.
  */
-package com.snowplowanalytics.snowflake.loader
+package com.snowplowanalytics.snowflake
+package loader
 
 import scala.util.control.NonFatal
-import java.sql.Connection
 
-import cats.data.{ Validated, ValidatedNel }
+import cats.data.{Validated, ValidatedNel}
 import cats.implicits._
 
-import com.snowplowanalytics.snowflake.core.{ ProcessManifest, RunId }
-
 import ast._
-import ast.Insert.InsertQuery
-import LoaderConfig.LoadConfig
+import core._
+import connection._
+import ProcessManifest._
+import loader.connection.Connection
 
 object Loader {
 
   /** Check that necessary Snowflake entities are available before actual load */
-  def preliminaryChecks(connection: Connection, schemaName: String, stageName: String, warehouseName: String): ValidatedNel[String, Unit] = {
-    val schema = if (Database.executeAndCountRows(connection, Show.ShowSchemas(Some(schemaName))) < 1)
+  def preliminaryChecks[C](db: Connection[C], connection: C, schemaName: String, stageName: String, warehouseName: String): ValidatedNel[String, Unit] = {
+    val schema = if (db.executeAndCountRows(connection, Show.ShowSchemas(Some(schemaName))) < 1)
       s"Schema $schemaName does not exist".invalidNel
     else ().validNel
-    val stage = if (Database.executeAndCountRows(connection, Show.ShowStages(Some(stageName), Some(schemaName))) < 1)
+    val stage = if (db.executeAndCountRows(connection, Show.ShowStages(Some(stageName), Some(schemaName))) < 1)
       s"Stage $stageName does not exist".invalidNel
     else ().validNel
-    val table = if (Database.executeAndCountRows(connection, Show.ShowTables(Some(Defaults.Table), Some(schemaName))) < 1)
+    val table = if (db.executeAndCountRows(connection, Show.ShowTables(Some(Defaults.Table), Some(schemaName))) < 1)
       s"Table ${Defaults.Table} does not exist".invalidNel
     else ().validNel
-    val fileFormat = if (Database.executeAndCountRows(connection, Show.ShowFileFormats(Some(Defaults.FileFormat), Some(schemaName))) < 1)
+    val fileFormat = if (db.executeAndCountRows(connection, Show.ShowFileFormats(Some(Defaults.FileFormat), Some(schemaName))) < 1)
       s"File format ${Defaults.FileFormat} does not exist".invalidNel
     else ().validNel
-    val warehouse = if (Database.executeAndCountRows(connection, Show.ShowWarehouses(Some(warehouseName))) < 1)
+    val warehouse = if (db.executeAndCountRows(connection, Show.ShowWarehouses(Some(warehouseName))) < 1)
       s"Warehouse $warehouseName does not exist".invalidNel
     else ().validNel
 
     (schema, stage, table, fileFormat, warehouse).map5 { (_: Unit, _: Unit, _: Unit, _: Unit, _: Unit) => () }
   }
 
-  /** Scan state from processing manifest, extract not-loaded folders and lot each of them */
-  def run(config: LoaderConfig.LoadConfig): Unit = {
-    val connection = Database.getConnection(config)
-    val dynamoDb = ProcessManifest.getDynamoDb(config.awsAccessKey, config.awsSecretKey, config.awsRegion)
-    val state = ProcessManifest.scan(dynamoDb, config.manifestTable).map(SnowflakeState.getState) match {
+  def exec[C](db: Connection[C], connection: C, manifest: ProcessManifest.Loader, config: Config): Unit = {
+    val state = manifest.scan(config.manifest).map(SnowflakeState.getState) match {
       case Right(s) => s
       case Left(error) =>
         System.err.println(error)
         sys.exit(1)
     }
 
-    preliminaryChecks(connection, config.snowflakeSchema, config.snowflakeStage, config.snowflakeWarehouse) match {
+    preliminaryChecks(db, connection, config.schema, config.stage, config.warehouse) match {
       case Validated.Valid(()) => println("Preliminary checks passed")
       case Validated.Invalid(errors) =>
         val message = s"Preliminary checks failed. ${errors.toList.mkString(", ")}"
@@ -65,42 +67,61 @@ object Loader {
       println("Nothing to load, exiting...")
       sys.exit(0)
     } else {
-      Database.execute(connection, UseWarehouse(config.snowflakeWarehouse))
+      db.execute(connection, UseWarehouse(config.warehouse))
       try {
-        Database.execute(connection, AlterWarehouse.Resume(config.snowflakeWarehouse))
-        println(s"Warehouse ${config.snowflakeWarehouse} resumed")
+        db.execute(connection, AlterWarehouse.Resume(config.warehouse))
+        println(s"Warehouse ${config.warehouse} resumed")
       } catch {
         case _: net.snowflake.client.jdbc.SnowflakeSQLException =>
-          println(s"Warehouse ${config.snowflakeWarehouse} already resumed")
+          println(s"Warehouse ${config.warehouse} already resumed")
       }
 
+      // Add each folder in transaction
       state.foldersToLoad.foreach { folder =>
-        addColumns(connection, config.snowflakeSchema, folder)
+        val transactionName = s"snowplow_${folder.folderToLoad.runIdFolder}".replaceAll("=", "_").replaceAll("-", "_")
+        db.startTransaction(connection, Some(transactionName))
         try {
-          loadFolder(connection, config, folder.folderToLoad)
+          addColumns(db, connection, config.schema, folder)
+          loadFolder(db, connection, config, folder.folderToLoad)
         } catch {
-          case NonFatal(e) =>
+          case e: Throwable =>
             val message = if (folder.newColumns.isEmpty)
-              s"Error during ${folder.folderToLoad.runId} load. Details: \n${e.getMessage}\n" +
+              s"Error during ${folder.folderToLoad.runId} load. ${e.getMessage}\n" +
                 s"No new columns were added, safe to rerun."
             else
-              s"Error during ${folder.folderToLoad.runId} load. Details: \n${e.getMessage}\n" +
-                s"Following columns were added during load-preparation and must be dropped to restore state: ${folder.newColumns.mkString(", ")}"
+              s"Error during ${folder.folderToLoad.runId} load. ${e.getMessage}\nTrying to rollback"
+            db.rollbackTransaction(connection)
             System.err.println(message)
+            println("Failure, exiting...")
             sys.exit(1)
         }
-        ProcessManifest.markLoaded(dynamoDb, config.manifestTable, folder.folderToLoad.runId)
+        manifest.markLoaded(config.manifest, folder.folderToLoad.runId)
+        db.commitTransaction(connection)
       }
     }
   }
 
+  /** Scan state from processing manifest, extract not-loaded folders and lot each of them */
+  def run(config: Config.CliLoaderConfiguration): Unit = {
+    if (config.dryRun) {
+      val dynamoDb = ProcessManifest.getDynamoDb(config.loaderConfig.awsRegion)
+      exec(DryRun, new DryRun(), DryRunProcessingManifest(dynamoDb), config.loaderConfig)
+    } else {
+      val dynamoDb = ProcessManifest.getDynamoDb(config.loaderConfig.awsRegion)
+      val manifest = AwsLoaderProcessingManifest(dynamoDb)
+      val connection = Jdbc.getConnection(config.loaderConfig)
+      exec(Jdbc, connection, manifest, config.loaderConfig)
+    }
+    println("Success. Exiting...")
+  }
+
   /** Create INSERT statement to load Processed Run Id */
-  def getInsertStatement(config: LoadConfig, folder: RunId.ProcessedRunId): Insert = {
+  def getInsertStatement(config: Config, folder: RunId.ProcessedRunId): Insert = {
     val tableColumns = getColumns(folder.shredTypes)
     val castedColumns = tableColumns.map { case (name, dataType) => Select.CastedColumn(Defaults.TempTableColumn, name, dataType) }
-    val tempTable = getTempTable(folder.runIdFolder, config.snowflakeSchema)
+    val tempTable = getTempTable(folder.runIdFolder, config.schema)
     val source = Select(castedColumns, tempTable.schema, tempTable.name)
-    InsertQuery(config.snowflakeSchema, Defaults.Table, tableColumns.map(_._1), source)
+    Insert.InsertQuery(config.schema, Defaults.Table, tableColumns.map(_._1), source)
   }
 
   /**
@@ -136,17 +157,24 @@ object Loader {
     * @param tempTableCreateStatement SQL statement AST
     * @param runId directory in stage, where files reside
     */
-  def loadTempTable(connection: Connection, config: LoadConfig, tempTableCreateStatement: CreateTable, runId: String): Unit = {
+  def loadTempTable[C](db: Connection[C], connection: C, config: Config, tempTableCreateStatement: CreateTable, runId: String): Unit = {
+    val credentials = PasswordService.getLoadCredentials(config.auth) match {
+      case Left(PasswordService.NoCredentials) => None
+      case Left(PasswordService.CredentialsFailure(error)) => throw new RuntimeException(error)
+      case Right(creds) => Some(creds)
+    }
+
     val tempTableCopyStatement = CopyInto(
       tempTableCreateStatement.schema,
       tempTableCreateStatement.name,
       List(Defaults.TempTableColumn),
-      CopyInto.From(config.snowflakeSchema, config.snowflakeStage, runId),
-      CopyInto.AwsCreds(config.awsAccessKey, config.awsSecretKey),
-      CopyInto.FileFormat(config.snowflakeSchema, Defaults.FileFormat))
+      CopyInto.From(config.schema, config.stage, runId),
+      credentials,
+      CopyInto.FileFormat(config.schema, Defaults.FileFormat),
+      true)
 
-    Database.execute(connection, tempTableCreateStatement)
-    Database.execute(connection, tempTableCopyStatement)
+    db.execute(connection, tempTableCreateStatement)
+    db.execute(connection, tempTableCopyStatement)
   }
 
   /** Try to infer ARRAY/OBJECT type, based on column name */
@@ -168,55 +196,45 @@ object Loader {
     * @param config load configuration
     * @param folder run id, extracted from manifest; processed, but not yet loaded
     */
-  private def loadFolder(connection: Connection, config: LoadConfig, folder: RunId.ProcessedRunId): Unit = {
+  private def loadFolder[C](db: Connection[C], connection: C, config: Config, folder: RunId.ProcessedRunId): Unit = {
     val runId = folder.runIdFolder
-    val tempTable = getTempTable(runId, config.snowflakeSchema)
-    loadTempTable(connection, config, tempTable, runId)
+    val tempTable = getTempTable(runId, config.schema)
+    loadTempTable(db, connection, config, tempTable, runId)
 
     val loadStatement = getInsertStatement(config, folder)
-    Database.execute(connection, loadStatement)
-    println(s"Folder [$runId] from stage [${config.snowflakeStage}] has been loaded")
+    db.execute(connection, loadStatement)
+    println(s"Folder [$runId] from stage [${config.stage}] has been loaded")
   }
 
   /** Add new column with VARIANT type to events table */
-  private def addShredType(connection: Connection, schemaName: String, columnName: String): Unit = {
-    try {
-      val shredType = getShredType(columnName) match {
-        case Right((_, datatype)) => datatype
-        case Left(error) =>
-          System.err.println(error)
-          sys.exit(1)
-      }
-      Database.execute(connection, AlterTable.AddColumn(schemaName, Defaults.Table, columnName, shredType))
-    } catch {
-      case e: net.snowflake.client.jdbc.SnowflakeSQLException =>
-        System.err.println(e.getMessage)
-        System.err.println("Aborting due invalid manifest state")
-        sys.exit(1)
+  private def addShredType[C](db: Connection[C], connection: C, schemaName: String, columnName: String): Unit = {
+    val shredType = getShredType(columnName) match {
+      case Right((_, datatype)) => datatype
+      case Left(error) => throw new RuntimeException(error)
     }
+    db.execute(connection, AlterTable.AddColumn(schemaName, Defaults.Table, columnName, shredType))
     println(s"New column [$columnName] has been added")
   }
 
   /**
     * Add columns for shred types that were encountered for particular folder to events table (in alphabetical order)
     * Print human-readable error and exit in case of error
+    * @param db connection interpreter
     * @param connection JDBC connection
     * @param schema Snowflake Schema for events table
     * @param folder folder parsed from manifest
     */
-  private def addColumns(connection: Connection, schema: String, folder: SnowflakeState.FolderToLoad): Unit = {
+  private def addColumns[C](db: Connection[C], connection: C, schema: String, folder: SnowflakeState.FolderToLoad): Unit = {
     val columns = folder.newColumns.toList.sorted
 
     val _ = columns.foldLeft(List.empty[String]) { (created, current) =>
       try {
-        addShredType(connection, schema, current)
+        addShredType(db, connection, schema, current)
         current :: created
       } catch {
         case NonFatal(e) =>
-          val message = s"Error during ${folder.folderToLoad.runId} load. Details: \n${e.getMessage}\n" +
-            s"Following columns were added during load-preparation and must be dropped to restore state: ${folder.newColumns.mkString(", ")}"
-          System.err.println(message)
-          sys.exit(1)
+          val message = s"${e.getMessage}\nFollowing columns were added during load-preparation and must be manually dropped in order to restore state: ${created.mkString(", ")}"
+          throw new RuntimeException(message)
       }
     }
     ()

@@ -12,20 +12,28 @@ guest$ cd /vagrant
 guest$ sbt test
 ```
 
+## Copyright and License
 
-## Copyright and license
+Snowflake Loader is copyright 2017 Snowplow Analytics Ltd.
 
-PROPRIETARY AND CONFIDENTIAL
+Licensed under the **[Apache License, Version 2.0] [license]** (the "License");
+you may not use this software except in compliance with the License.
 
-Unauthorized copying of this project via any medium is strictly prohibited.
-
-Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 
 [vagrant-install]: http://docs.vagrantup.com/v2/installation/index.html
 [virtualbox-install]: https://www.virtualbox.org/wiki/Downloads
 
+
+[license-image]: http://img.shields.io/badge/license-Apache--2-blue.svg?style=flat
+[license]: http://www.apache.org/licenses/LICENSE-2.0
+
 [travis]: https://travis-ci.org/snowplow/snowplowsnowflaketransformer
 [travis-image]: https://travis-ci.org/snowplow/snowplowsnowflaketransformer.png?branch=master
 
-[release-image]: http://img.shields.io/badge/release-0.1.0-blue.svg?style=flat
+[release-image]: http://img.shields.io/badge/release-0.3.0-blue.svg?style=flat
 [releases]: https://github.com/snowplow/snowplowsnowflaketransformer/releases
