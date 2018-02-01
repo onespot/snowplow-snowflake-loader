@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Snowplow Analytics Ltd. All rights reserved.
+ * Copyright (c) 2017-2018 Snowplow Analytics Ltd. All rights reserved.
  *
  * This program is licensed to you under the Apache License Version 2.0,
  * and you may not use this file except in compliance with the Apache License Version 2.0.
@@ -17,7 +17,7 @@ import com.snowplowanalytics.snowflake.core.Config._
 case class TransformerJobConfig(enrichedArchive: S3Folder, snowflakeOutput: S3Folder, runId: String) {
   def input: String = {
     val (enrichedBucket, enrichedPath) = enrichedArchive.splitS3Folder
-    s"s3a://$enrichedBucket/$enrichedPath$runIdFolder/part-*"
+    s"s3a://$enrichedBucket/$enrichedPath$runIdFolder/*"
   }
 
   def output: String = {
