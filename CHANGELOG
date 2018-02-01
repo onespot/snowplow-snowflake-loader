@@ -1,3 +1,7 @@
+Version 0.3.1 (2018-02-01)
+--------------------------
+Remove part-* pattern from Transformer (#44)
+
 Version 0.3.0 (2017-12-28)
 --------------------------
 Allow loader to use temporary credentials (#37)
