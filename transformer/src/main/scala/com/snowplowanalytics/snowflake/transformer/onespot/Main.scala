@@ -4,7 +4,7 @@ import com.snowplowanalytics.snowflake.core.ProcessManifest
 import com.snowplowanalytics.snowflake.transformer.{StringSetAccumulator, Transformer}
 import org.apache.spark.{SparkConf, SparkContext}
 
-class Main {
+object Main {
   def main(args: Array[String]): Unit = {
 
     val appConfig = OnespotTransformerJobConfig.loadConfigFrom(args).get
